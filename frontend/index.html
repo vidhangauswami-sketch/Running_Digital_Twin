@@ -1,0 +1,3065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Plant Digital Twin Builder</title>
+<style>
+  :root{
+    --bg:#080b10; --panel:#0e141d; --panel2:#131b26; --line:#1e2a38;
+    --ink:#e6edf3; --muted:#8a97a6; --amber:#ff9a2e; --amber2:#ffb861;
+    --teal:#2dd4bf; --red:#ff5c5c; --green:#4ade80; --blue:#5aa9ff;
+    --grid:#111a24;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Segoe UI',system-ui,Roboto,sans-serif;font-size:14px;line-height:1.45}
+  code,.mono{font-family:'JetBrains Mono',ui-monospace,Consolas,monospace}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0e141d,#0a0f16);display:flex;
+    align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header h1{margin:0;font-size:17px;letter-spacing:.5px;font-weight:600}
+  header h1 span{color:var(--amber)}
+  .sub{color:var(--muted);font-size:12px}
+  .tabs{display:flex;gap:2px;background:var(--panel);border-bottom:1px solid var(--line);
+    padding:0 12px;overflow-x:auto}
+  .tab{padding:11px 16px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+    white-space:nowrap;font-size:13px}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+  .view{display:none;padding:18px 20px;max-width:1400px;margin:0 auto}
+  .view.active{display:block}
+  .caveat{background:rgba(255,154,46,.08);border:1px solid rgba(255,154,46,.3);
+    border-left:3px solid var(--amber);border-radius:6px;padding:10px 14px;margin:0 0 16px;
+    color:var(--amber2);font-size:12.5px}
+  .caveat b{color:var(--amber)}
+  .grid2{display:grid;grid-template-columns:1fr 340px;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--muted);font-weight:600}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:7px 12px;cursor:pointer;font-size:12.5px}
+  button:hover{border-color:var(--amber);color:var(--amber2)}
+  button.primary{background:var(--amber);color:#111;border-color:var(--amber);font-weight:600}
+  button.primary:hover{background:var(--amber2);color:#111}
+  button.danger:hover{border-color:var(--red);color:var(--red)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  select,input[type=text],input[type=number]{background:#0a0f16;color:var(--ink);
+    border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-size:12.5px;width:100%}
+  label.fld{display:block;margin:8px 0 3px;color:var(--muted);font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.4px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .palette{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{padding:6px 10px;border:1px solid var(--line);border-radius:20px;cursor:pointer;
+    font-size:12px;background:var(--panel2)}
+  .chip:hover{border-color:var(--teal);color:var(--teal)}
+  svg#canvas{width:100%;height:520px;background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/26px 26px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/26px 26px,#070a0f;
+    border:1px solid var(--line);border-radius:8px;touch-action:none}
+  .node rect{fill:#12202e;stroke:#2a4258;stroke-width:1.5}
+  .node.sel rect{stroke:var(--amber);stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(255,154,46,.5))}
+  .node.trained rect{stroke:var(--teal)}
+  .node text{fill:var(--ink);font-size:12px;pointer-events:none;user-select:none}
+  .node .typ{fill:var(--muted);font-size:9.5px;letter-spacing:.5px}
+  .wire{stroke:#3a5a72;stroke-width:2;fill:none;marker-end:url(#arrow)}
+  .wire:hover{stroke:var(--red);cursor:pointer}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:left}
+  th{background:var(--panel2);color:var(--muted);position:sticky;top:0}
+  .scroll{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+  .kv{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;
+    background:var(--panel2);border:1px solid var(--line);margin:2px}
+  .metric{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+  .metric b{color:var(--teal);font-family:monospace}
+  .muted{color:var(--muted)}
+  .small{font-size:11.5px}
+  .ok{color:var(--green)} .bad{color:var(--red)} .warn{color:var(--amber)}
+  .feat-list{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow:auto}
+  .feat-list label{display:flex;align-items:center;gap:5px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer}
+  .infgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .predbox{font-size:26px;font-family:monospace;color:var(--amber);text-align:center;
+    padding:16px;border:1px dashed var(--amber);border-radius:8px;margin-top:10px}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  .badge{font-size:10px;padding:2px 6px;border-radius:4px;background:#1a2a1a;color:var(--green);
+    border:1px solid #2a4a2a}
+  hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+  /* ---- BESS / UPS module ---- */
+  .node.batt rect{fill:#16261c;stroke:#3f7a52}
+  .node.batt.trained rect{stroke:var(--teal)}
+  .node.batt.sel rect{stroke:var(--amber);stroke-width:2.5}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .kpi .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .kpi .val{font-family:monospace;font-size:19px;margin-top:3px;color:var(--teal)}
+  .kpi .val.na{color:var(--muted);font-size:13px}
+  .kpi .sub{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.35}
+  .kpi.warnk{border-color:rgba(255,154,46,.5)} .kpi.warnk .val{color:var(--amber)}
+  .kpi.badk{border-color:rgba(255,92,92,.5)}  .kpi.badk .val{color:var(--red)}
+  .mapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+  .chartbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:12px}
+  .chartbox h4{margin:0 0 6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .chartbox svg{width:100%;height:190px;display:block}
+  .lgd{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
+  .na{color:var(--muted)}
+  .sec{margin-top:16px}
+  .sec>h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--amber2);
+    border-left:3px solid var(--amber);padding-left:8px;margin:0 0 10px}
+  /* ---- Cleaning Analysis module ---- */
+  .ctabs{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px 8px 0 0;overflow-x:auto}
+  .ctab{padding:9px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;
+    font-size:12.5px;white-space:nowrap}
+  .ctab:hover{color:var(--ink)}
+  .ctab.active{color:var(--amber);border-bottom-color:var(--amber)}
+  .cview{display:none;border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;padding:14px}
+  .cview.active{display:block}
+  .plotbox{width:100%;height:360px}
+  .plotbox.sm{height:230px}
+  .plotbox.lg{height:440px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.two{grid-template-columns:1fr}}
+  .dz{border:1px dashed var(--line);border-radius:6px;padding:5px 8px}
+  .badge-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;
+    font-weight:600;margin:2px}
+  .badge-status.optimal{background:#16261c;color:var(--green);border:1px solid #2a4a2a}
+  .badge-status.suboptimal{background:rgba(255,154,46,.12);color:var(--amber2);
+    border:1px solid rgba(255,154,46,.4)}
+  .badge-status.wrong{background:rgba(255,92,92,.12);color:var(--red);
+    border:1px solid rgba(255,92,92,.4)}
+  .badge-status.unknown{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+  .invbtn{padding:5px 11px;font-size:12px;border:1px solid var(--line);border-radius:5px;
+    background:var(--panel2);color:var(--ink);cursor:pointer;margin:2px}
+  .invbtn.on{border-color:var(--amber);color:var(--amber2);font-weight:600}
+  .chatbox{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+    min-height:260px;max-height:400px;overflow-y:auto;padding:12px;margin-bottom:8px}
+  .cmsg{display:flex;gap:8px;margin-bottom:10px}
+  .cmsg .role{font-size:9px;letter-spacing:1px;margin-bottom:2px;color:var(--muted)}
+  .cmsg.u .role{color:var(--blue)} .cmsg.a .role{color:var(--teal)}
+  .cmsg .txt{font-size:12px;line-height:1.6;white-space:pre-wrap}
+  .qp{padding:4px 9px;font-size:10.5px;border:1px solid var(--line);border-radius:14px;
+    background:transparent;color:var(--muted);cursor:pointer;margin:2px}
+  .qp:hover{border-color:var(--amber);color:var(--amber2)}
+</style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Solar Plant <span>Digital Twin Builder</span></h1>
+    <div class="sub">Configurable multi-component plant · per-component in-browser ML · fully offline, no external libraries</div>
+  </div>
+  <div class="row">
+    <button onclick="saveConfig()">⬇ Save config (.json)</button>
+    <button onclick="document.getElementById('cfgFile').click()">⬆ Load config</button>
+    <input type="file" id="cfgFile" accept=".json" style="display:none" onchange="loadConfig(this)">
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-v="build">1 · Plant &amp; Diagram</div>
+  <div class="tab" data-v="params">2 · Component Parameters</div>
+  <div class="tab" data-v="data">3 · Training Data</div>
+  <div class="tab" data-v="train">4 · Train Model</div>
+  <div class="tab" data-v="predict">5 · Predict</div>
+  <div class="tab" data-v="bess">6 · BESS / UPS Monitor</div>
+  <div class="tab" data-v="clean">7 · Cleaning Analysis</div>
+  <div class="tab" data-v="rag">8 · AI Insights (RAG)</div>
+</div>
+
+<!-- ============ VIEW 1: BUILD ============ -->
+<div class="view active" id="v-build">
+  <div class="caveat">
+    Build your plant by adding components, dragging them to position, and (optionally) wiring them.
+    Every component can hold its own editable parameters and its own trained model.
+    <b>Nothing here is fabricated</b> — the diagram only reflects what you add.
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Single-line / Layout canvas</h3>
+      <div class="row" style="margin-bottom:10px">
+        <span class="muted small">Add:</span>
+        <div class="palette" id="palette"></div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <button id="btnConnect" onclick="toggleConnect()">🔗 Connect mode: off</button>
+        <button class="danger" onclick="deleteSelected()">🗑 Delete selected</button>
+        <button onclick="autoLayout()">⤢ Tidy layout</button>
+        <span class="muted small" id="hintConnect"></span>
+      </div>
+      <svg id="canvas" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5"
+            orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#3a5a72"/></marker>
+        </defs>
+        <g id="wires"></g>
+        <g id="nodes"></g>
+      </svg>
+      <div class="hint">Tip: click a component to select it, drag to move. Add multiple inverters via the “Inverter ×N” chip.</div>
+    </div>
+    <div class="card">
+      <h3>Quick add inverters</h3>
+      <label class="fld">Number of inverters</label>
+      <input type="number" id="invCount" value="4" min="1" max="60">
+      <label class="fld">Base name</label>
+      <input type="text" id="invName" value="INV">
+      <button class="primary" style="width:100%;margin-top:10px" onclick="quickInverters()">Add inverters</button>
+      <hr>
+      <h3>Components in plant</h3>
+      <div id="nodeList" class="small"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>Plant scenario · component-wise predicted output</h3>
+    <div class="caveat" style="margin:0 0 12px">
+      Enter the plant's external drivers once (irradiance, temperature, etc.). Each <b>trained</b> component predicts its own output and shows it on its block above.
+      When one component's <b>target column name exactly matches</b> another component's input feature, the value is <b>chained automatically</b> —
+      e.g. PV Field's predicted DC power feeds the Inverter. Every input's source is shown; unresolved components are flagged, never guessed.
+    </div>
+    <div id="scenarioDrivers" class="infgrid"></div>
+    <button class="primary" style="margin-top:12px" onclick="evaluatePlant()">▶ Evaluate plant</button>
+    <div id="scenarioResults" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- ============ VIEW 2: PARAMS ============ -->
+<div class="view" id="v-params">
+  <div class="caveat">Edit any component’s identity and its input parameters. Parameters are free-form key/value pairs — put ratings, nameplate data, sensor ranges, anything relevant to that component.</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Component editor</h3>
+      <label class="fld">Select component</label>
+      <select id="paramSelect" onchange="renderParamEditor()"></select>
+      <div id="paramEditor"></div>
+    </div>
+    <div class="card">
+      <h3>Component summary</h3>
+      <div id="paramSummary" class="small muted">Select a component.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW 3: DATA ============ -->
+<div class="view" id="v-data">
+  <div class="caveat">
+    Upload <b>.csv</b> or <b>.xlsx</b> (first row = column headers). Files are read entirely in your browser — nothing is uploaded anywhere.
+    <b>Legacy binary .xls is not supported</b> (can’t be parsed offline without a heavy library) — re-save as .xlsx or .csv.
+    <span id="dsWarn"></span>
+  </div>
+  <div class="card">
+    <div class="row">
+      <label class="fld" style="margin:0">Attach data to component:</label>
+      <select id="dataComp" style="max-width:260px" onchange="onDataCompChange()"></select>
+    </div>
+    <div class="caveat" style="margin:10px 0">
+      This is a <b>digital twin</b> — a component's golden dataset can change with the season
+      (summer / monsoon / winter, pre- and post-cleaning, etc.). You can upload <b>multiple datasets</b>
+      per component below; each is kept separately and tagged with a label, and you choose how they're
+      used when training in tab 4.
+    </div>
+    <div class="row">
+      <label class="fld" style="margin:0">Label / season tag:</label>
+      <input type="text" id="dataSeasonLabel" placeholder="e.g. Summer-2026, Monsoon golden dataset…" style="max-width:240px">
+      <button onclick="document.getElementById('dataFile').click()">📄 Upload dataset</button>
+      <input type="file" id="dataFile" accept=".csv,.xlsx" style="display:none" onchange="handleData(this)">
+      <span id="dataStatus" class="small muted"></span>
+    </div>
+    <div id="dataDatasetsList" style="margin-top:10px"></div>
+    <div id="dataQuality" style="margin-top:12px"></div>
+    <div id="dataPreview" style="margin-top:12px"></div>
+    <div id="dataModelSetup" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- ============ VIEW 4: TRAIN ============ -->
+<div class="view" id="v-train">
+  <div class="caveat">
+    This trains a <b>real</b> model in your browser by gradient descent, so the loss curve below is genuine.
+    The models are deliberately simple (ridge-linear or a 1-hidden-layer network) — good for quick site-level estimates, <b>not</b> a validated engineering simulator.
+    For continuous targets, “accuracy” is reported as <b>R²</b> (1.0 = perfect, 0 = no better than the mean); RMSE/MAE are in the target’s original units.
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Setup</h3>
+      <label class="fld">Component / model</label>
+      <select id="trainComp" onchange="syncTrainCols()"></select>
+      <label class="fld">Target column (what to predict)</label>
+      <select id="targetCol"></select>
+      <label class="fld">Feature columns (inputs)</label>
+      <div class="feat-list" id="featList"></div>
+      <div id="trainDataSrc" style="margin-top:10px"></div>
+      <hr>
+      <div class="row">
+        <div style="flex:1"><label class="fld">Model</label>
+          <select id="modelType">
+            <option value="linear">Ridge / linear (fast)</option>
+            <option value="mlp">Neural net · 1 hidden layer</option>
+          </select></div>
+        <div style="flex:1"><label class="fld">Hidden units (MLP)</label>
+          <input type="number" id="hidden" value="8" min="1" max="64"></div>
+      </div>
+      <div class="row">
+        <div style="flex:1"><label class="fld">Learning rate</label>
+          <input type="number" id="lr" value="0.05" step="0.005"></div>
+        <div style="flex:1"><label class="fld">Epochs</label>
+          <input type="number" id="epochs" value="400" min="10" max="5000"></div>
+      </div>
+      <div class="row">
+        <div style="flex:1"><label class="fld">L2 (λ)</label>
+          <input type="number" id="lambda" value="0.001" step="0.001"></div>
+        <div style="flex:1"><label class="fld">Validation split</label>
+          <input type="number" id="valSplit" value="0.2" step="0.05" min="0.05" max="0.5"></div>
+      </div>
+      <button class="primary" style="width:100%;margin-top:12px" id="btnTrain" onclick="trainModel()">▶ Train model</button>
+      <div id="trainMsg" class="small" style="margin-top:8px"></div>
+      <hr>
+      <div style="border:1px solid var(--line);border-radius:8px;padding:11px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="nnEnable"
+            onchange="document.getElementById('nnControls').style.display=this.checked?'block':'none'">
+          <b style="color:var(--teal)">🧠 Enable Deep Neural Network (TensorFlow.js)</b>
+        </label>
+        <div class="hint">Multi-layer network, GPU-accelerated in your browser (WebGL). Loads TensorFlow.js from CDN on first use — needs internet. Existing Ridge / 1-layer options above stay unchanged.</div>
+        <div id="nnControls" style="display:none;margin-top:10px">
+          <div class="row">
+            <div style="flex:1"><label class="fld">Hidden layers (units, comma-sep)</label>
+              <input type="text" id="nnLayers" value="16,8"></div>
+            <div style="flex:1"><label class="fld">Activation</label>
+              <select id="nnAct"><option>relu</option><option>tanh</option><option>sigmoid</option></select></div>
+          </div>
+          <div class="row">
+            <div style="flex:1"><label class="fld">Optimizer</label>
+              <select id="nnOpt"><option>adam</option><option>sgd</option></select></div>
+            <div style="flex:1"><label class="fld">Learning rate</label>
+              <input type="number" id="nnLr" value="0.01" step="0.001"></div>
+          </div>
+          <div class="row">
+            <div style="flex:1"><label class="fld">Epochs</label>
+              <input type="number" id="nnEpochs" value="150" min="10" max="2000"></div>
+            <div style="flex:1"><label class="fld">Batch size</label>
+              <input type="number" id="nnBatch" value="32" min="1" max="1024"></div>
+          </div>
+          <button class="primary" style="width:100%;margin-top:10px" id="btnTrainNN" onclick="trainNN()">▶ Train Neural Network</button>
+          <div id="nnMsg" class="small" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Loss curve (MSE, standardized)</h3>
+      <svg id="lossChart" viewBox="0 0 320 200" style="width:100%;height:200px"></svg>
+      <div class="row small" style="justify-content:center;gap:16px;margin-top:4px">
+        <span><span style="color:var(--amber)">■</span> train</span>
+        <span><span style="color:var(--blue)">■</span> validation</span>
+      </div>
+      <hr>
+      <h3>Metrics (validation set)</h3>
+      <div id="metrics" class="small muted">Train a model to see metrics.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW 5: PREDICT ============ -->
+<div class="view" id="v-predict">
+  <div class="caveat">Enter feature values to get the model’s prediction. Output quality is bounded by your training data — extrapolating far outside the training range is unreliable, and the tool flags it when you do.</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Inputs</h3>
+      <label class="fld">Trained component / model</label>
+      <select id="predComp" onchange="renderPredInputs()"></select>
+      <div id="predInputs" class="infgrid" style="margin-top:8px"></div>
+      <button class="primary" style="width:100%;margin-top:14px" onclick="runPredict()">⚡ Predict</button>
+    </div>
+    <div class="card">
+      <h3>Output</h3>
+      <div id="predOut" class="muted small">Select a trained model and enter inputs.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW 6: BESS / UPS MONITOR ============ -->
+<div class="view" id="v-bess">
+  <div class="caveat">
+    Data-driven condition monitoring for <b>battery storage</b> — control-room <b>UPS</b> banks and utility-scale <b>BESS</b>.
+    Every number below is computed from the columns <b>you</b> map out of the file attached in tab 3.
+    If a required column isn’t mapped, the KPI is reported as <b>not computed</b> — it is never estimated or filled in.
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label class="fld" style="margin:0">Battery component</label>
+      <select id="bessComp" style="max-width:300px" onchange="bessRenderPanel()"></select>
+      <button onclick="bessQuickAdd('BESS')">＋ Add BESS</button>
+      <button onclick="bessQuickAdd('UPS')">＋ Add UPS</button>
+      <span id="bessCompMsg" class="small muted"></span>
+    </div>
+    <div id="bessPanel" style="margin-top:12px"></div>
+  </div>
+
+  <div id="bessOut" style="margin-top:16px"></div>
+</div>
+
+<!-- ============ VIEW 7: CLEANING ANALYSIS ============ -->
+<div class="view" id="v-clean">
+  <div class="caveat">
+    Upload your own <b>cleaning log</b> and <b>date-wise per-inverter generation</b> and get the same
+    before/after, soiling-loss, cleaning-log and EDA analysis as the reference dashboard — computed
+    entirely in your browser from those two files. This build has no weather/GTI/PVsyst feed, so the
+    "weather-adjusted" gain is approximated by normalizing each inverter against the <b>fleet's daily
+    mean</b> that day (a standard soiling-analysis trick: irradiance and temperature swings hit every
+    inverter on the same site about equally, so dividing them out isolates the cleaning/soiling effect).
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>1 · Upload data</h3>
+
+      <label class="fld">Generation data CSV</label>
+      <div class="row dz">
+        <input type="file" id="clGenFile" accept=".csv" onchange="CL.loadGenFile(this)">
+      </div>
+      <div class="hint">Wide format: <code>Date, Inv_1, Inv_2, …</code> (kWh per inverter per day) —
+        or long format: <code>Date, Inverter, Generation</code>. Header names are matched loosely
+        (anything with "date", "inverter/asset", "gen/kwh/energy/output").</div>
+      <div id="clGenMsg" class="small muted" style="margin-top:6px">No file loaded yet.</div>
+
+      <hr>
+      <label class="fld">Cleaning log CSV</label>
+      <div class="row dz">
+        <input type="file" id="clCleanFile" accept=".csv" onchange="CL.loadCleanFile(this)">
+      </div>
+      <div class="hint"><code>Date, Inverter[, Type]</code> — leave Inverter blank or use
+        <code>ALL</code> for rows where the whole plant was cleaned the same day.</div>
+      <div id="clCleanMsg" class="small muted" style="margin-top:6px">No file loaded yet.</div>
+
+      <hr>
+      <div class="row">
+        <label class="fld" style="margin:0">Before/after window (days)</label>
+        <input type="number" id="clWindow" value="10" min="3" max="30" style="max-width:80px">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="clRunBtn" onclick="CL.analyze()" disabled>▶ Run analysis</button>
+        <button onclick="CL.loadSample()">Use sample data instead</button>
+      </div>
+      <div id="clRunMsg" class="small" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h3>How the metrics are computed</h3>
+      <div class="small muted" style="line-height:1.7">
+        <b class="mono" style="color:var(--teal)">% Actual</b> — plain before/after average change in kWh, no adjustment.<br><br>
+        <b class="mono" style="color:var(--teal)">% Normalized</b> — before/after change in each inverter's
+        output <i>relative to the fleet's mean that day</i>. This is the closest proxy available to a true
+        weather-adjusted cleaning effect without irradiance data.<br><br>
+        <b class="mono" style="color:var(--teal)">Soiling %</b> — how far the inverter's relative output had
+        drifted below its own trailing 45-day peak, right before the clean.<br><br>
+        <b class="mono" style="color:var(--teal)">Status</b> — <span style="color:var(--red)">Wrong-timing</span>
+        if the normalized gain was negative, <span style="color:var(--amber2)">Sub-optimal</span> if it was a
+        small positive gain (&lt;2%), otherwise <span style="color:var(--green)">Optimal</span>.
+      </div>
+    </div>
+  </div>
+
+  <div id="clResults" style="display:none;margin-top:16px">
+    <div class="ctabs" id="clSubtabs">
+      <div class="ctab active" data-cv="overview" onclick="CL.goSub('overview')">Overview</div>
+      <div class="ctab" data-cv="ba" onclick="CL.goSub('ba')">Before / After</div>
+      <div class="ctab" data-cv="soil" onclick="CL.goSub('soil')">Soiling Loss</div>
+      <div class="ctab" data-cv="ts" onclick="CL.goSub('ts')">Time Series</div>
+      <div class="ctab" data-cv="log" onclick="CL.goSub('log')">Cleaning Log</div>
+      <div class="ctab" data-cv="eda" onclick="CL.goSub('eda')">EDA Stats</div>
+      <div class="ctab" data-cv="ai" onclick="CL.goSub('ai')">AI Analyst</div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="cview active" id="cv-overview">
+      <h4 style="margin:0 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">
+        Avg generation before vs after cleaning (all events, per inverter)</h4>
+      <div class="chartbox"><div class="plotbox" id="cl-ov-bar"></div></div>
+      <div class="two" style="margin-top:12px">
+        <div class="chartbox"><h4>Avg actual % gain</h4><div class="plotbox sm" id="cl-ov-act"></div></div>
+        <div class="chartbox"><h4>Avg normalized % gain (true cleaning effect)</h4><div class="plotbox sm" id="cl-ov-nor"></div></div>
+      </div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">All cleaning events</h4>
+      <div class="scroll"><table id="cl-tb-ov"></table></div>
+    </div>
+
+    <!-- BEFORE / AFTER -->
+    <div class="cview" id="cv-ba">
+      <div class="row"><span class="small muted">Inverter:</span><div id="cl-ba-invs"></div></div>
+      <div class="row" style="margin-top:6px">
+        <span class="small muted">Event:</span>
+        <select id="cl-ba-ev" onchange="CL.renderBA()" style="max-width:340px"></select>
+      </div>
+      <div class="kpis" id="cl-ba-cards" style="margin-top:10px"></div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">Window: actual kWh vs fleet mean</h4>
+      <div class="chartbox"><div class="plotbox lg" id="cl-ba-main"></div></div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">All events for this inverter — normalized % gain</h4>
+      <div class="chartbox"><div class="plotbox" id="cl-ba-all"></div></div>
+    </div>
+
+    <!-- SOILING LOSS -->
+    <div class="cview" id="cv-soil">
+      <div class="row"><span class="small muted">Inverter:</span>
+        <select id="cl-sl-inv" onchange="CL.renderSoil()" style="max-width:220px"></select>
+      </div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">Daily soiling loss % (vs trailing 45-day peak)</h4>
+      <div class="chartbox"><div class="plotbox lg" id="cl-sl-daily"></div></div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">Soiling rate right before each cleaning event</h4>
+      <div class="chartbox"><div class="plotbox" id="cl-sl-events"></div></div>
+    </div>
+
+    <!-- TIME SERIES -->
+    <div class="cview" id="cv-ts">
+      <div class="row"><span class="small muted">Inverter:</span>
+        <select id="cl-ts-inv" onchange="CL.renderTS()" style="max-width:220px"></select>
+        <span class="small muted">★ = cleaning day</span>
+      </div>
+      <div class="chartbox" style="margin-top:8px"><div class="plotbox lg" id="cl-ts"></div></div>
+      <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;text-transform:uppercase">Fleet comparison — all inverters</h4>
+      <div class="chartbox"><div class="plotbox lg" id="cl-ts-fleet"></div></div>
+    </div>
+
+    <!-- CLEANING LOG -->
+    <div class="cview" id="cv-log">
+      <div class="scroll"><table id="cl-tb-log"></table></div>
+    </div>
+
+    <!-- EDA -->
+    <div class="cview" id="cv-eda">
+      <div class="scroll"><table id="cl-tb-eda"></table></div>
+      <div class="two" style="margin-top:12px">
+        <div class="chartbox"><h4>Mean daily generation per inverter</h4><div class="plotbox sm" id="cl-eda-mean"></div></div>
+        <div class="chartbox"><h4>Correlation vs fleet mean (Pearson r)</h4><div class="plotbox sm" id="cl-eda-corr"></div></div>
+      </div>
+    </div>
+
+    <!-- AI ANALYST -->
+    <div class="cview" id="cv-ai">
+      <p class="small muted" style="margin-bottom:8px">Ask about the cleaning events, soiling rates and
+        flags computed from your uploaded data.</p>
+      <div class="row" id="cl-qpills"></div>
+      <div class="chatbox" id="cl-chatbox"><div class="small muted" style="text-align:center;margin-top:40px">
+        Ask a question about your cleaning data…</div></div>
+      <div class="row" style="margin:0">
+        <input type="text" id="cl-cinput" placeholder="e.g. Which events had a negative normalized gain?"
+          style="flex:1" onkeydown="if(event.key==='Enter')CL.doChat()">
+        <button class="primary" id="cl-cbtn" onclick="CL.doChat()">Ask</button>
+        <button onclick="CL.clrChat()">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW 8: AI INSIGHTS (ADVANCED RAG) ============ -->
+<div class="view" id="v-rag">
+  <div class="caveat">
+    <b>Advanced RAG (Retrieval-Augmented analysis)</b> over everything in this digital twin — component
+    parameters, every dataset attached to every component (all seasons/tags), trained-model metrics,
+    latest plant-scenario predictions and cleaning-analysis results — plus any extra reference files you
+    upload below (datasheets, SOPs, inspection notes, extra logs…). Ask a question and it retrieves the
+    most relevant pieces of your data and answers <b>only</b> from that retrieved evidence — fully offline,
+    nothing leaves your browser, nothing is fabricated.
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>1 · Reference documents (optional)</h3>
+      <div class="hint">Upload extra files the twin doesn't already have. Accepted: .csv, .xlsx, .txt, .md, .json
+        (read entirely in your browser, same as tab 3).</div>
+      <div class="row" style="margin-top:8px">
+        <button onclick="document.getElementById('ragFile').click()">📎 Add file(s)</button>
+        <input type="file" id="ragFile" accept=".csv,.xlsx,.txt,.md,.json" multiple style="display:none" onchange="ragHandleFiles(this)">
+        <span id="ragUploadMsg" class="small muted"></span>
+      </div>
+      <div id="ragDocList" style="margin-top:10px"></div>
+      <hr>
+      <div class="row">
+        <button class="primary" onclick="ragRebuildIndex()">🔄 Build / refresh knowledge index</button>
+        <span id="ragIndexMsg" class="small muted"></span>
+      </div>
+      <div class="hint">Re-run this after uploading new data, training a model, or adding reference files, so the index reflects the latest state.</div>
+    </div>
+    <div class="card">
+      <h3>What's indexed</h3>
+      <div id="ragIndexSummary" class="small muted">Click "Build / refresh knowledge index".</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>2 · Ask about your plant</h3>
+    <div class="row" id="ragQpills"></div>
+    <div class="chatbox" id="ragChatbox"><div class="small muted" style="text-align:center;margin-top:40px">
+      Ask a question grounded in your uploaded data…</div></div>
+    <div class="row" style="margin:0">
+      <input type="text" id="ragInput" placeholder="e.g. Which component's model has the weakest R²?"
+        style="flex:1" onkeydown="if(event.key==='Enter')ragAsk()">
+      <button class="primary" id="ragAskBtn" onclick="ragAsk()">Ask</button>
+      <button onclick="ragClearChat()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const COMP_TYPES = ["PV Module","Combiner","Inverter","LT","Aux. Transformer",
+                    "Transformer","HT","Grid","BESS","PCS","Battery Rack","UPS","BMS",
+                    "Sensor","Meter","Custom"];
+let state = { nodes:[], wires:[], sel:null, connectFrom:null, connectMode:false };
+let uid = 1;
+const $ = id => document.getElementById(id);
+
+/* =========================================================================
+   TABS
+   ========================================================================= */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('v-'+t.dataset.v).classList.add('active');
+  refreshSelectors();
+});
+
+/* =========================================================================
+   PALETTE + NODE CREATION
+   ========================================================================= */
+function initPalette(){
+  const p=$('palette');
+  COMP_TYPES.forEach(t=>{
+    const c=document.createElement('span');
+    c.className='chip'; c.textContent=t;
+    c.onclick=()=>addNode(t);
+    p.appendChild(c);
+  });
+}
+function addNode(type,label,x,y){
+  const n={ id:'c'+(uid++), type, label: label||(type+' '+state.nodes.filter(z=>z.type===type).length),
+    x: x==null? 60+Math.random()*300 : x, y: y==null? 60+Math.random()*300 : y,
+    w:120, h:64, params:{}, model:null, data:null, lastPred:null };
+  state.nodes.push(n); renderDiagram(); refreshSelectors(); renderNodeList();
+  return n;
+}
+function quickInverters(){
+  const n=Math.max(1,Math.min(60,parseInt($('invCount').value)||1));
+  const base=$('invName').value.trim()||'INV';
+  const startX=60, y=80, gap=140;
+  for(let i=0;i<n;i++){
+    const col=i%5, rowY=y+Math.floor(i/5)*90;
+    addNode('Inverter', base+'-'+(i+1), startX+col*gap, rowY);
+  }
+}
+
+/* =========================================================================
+   DIAGRAM RENDER + DRAG
+   ========================================================================= */
+const NS='http://www.w3.org/2000/svg';
+function renderDiagram(){
+  const g=$('nodes'), w=$('wires');
+  g.innerHTML=''; w.innerHTML='';
+  // wires first
+  state.wires.forEach(wire=>{
+    const a=state.nodes.find(n=>n.id===wire.from), b=state.nodes.find(n=>n.id===wire.to);
+    if(!a||!b) return;
+    const path=document.createElementNS(NS,'path');
+    const x1=a.x+a.w/2,y1=a.y+a.h/2,x2=b.x+b.w/2,y2=b.y+b.h/2;
+    path.setAttribute('d',`M${x1},${y1} L${x2},${y2}`);
+    path.setAttribute('class','wire');
+    path.onclick=()=>{ if(confirm('Delete this connection?')){state.wires=state.wires.filter(z=>z.id!==wire.id);renderDiagram();} };
+    w.appendChild(path);
+  });
+  state.nodes.forEach(n=>{
+    const grp=document.createElementNS(NS,'g');
+    grp.setAttribute('class','node'+(BESS_TYPES.includes(n.type)?' batt':'')+
+      (state.sel===n.id?' sel':'')+(n.model?' trained':''));
+    grp.setAttribute('transform',`translate(${n.x},${n.y})`);
+    const r=document.createElementNS(NS,'rect');
+    r.setAttribute('width',n.w); r.setAttribute('height',n.h); r.setAttribute('rx',6);
+    grp.appendChild(r);
+    const t1=document.createElementNS(NS,'text');
+    t1.setAttribute('x',n.w/2); t1.setAttribute('y',20); t1.setAttribute('text-anchor','middle');
+    t1.textContent=n.label.length>16?n.label.slice(0,15)+'…':n.label;
+    grp.appendChild(t1);
+    const t2=document.createElementNS(NS,'text');
+    t2.setAttribute('class','typ'); t2.setAttribute('x',n.w/2); t2.setAttribute('y',34);
+    t2.setAttribute('text-anchor','middle');
+    t2.textContent=n.type.toUpperCase()+(n.model?' ✓ML':'');
+    grp.appendChild(t2);
+    if(n.lastPred){
+      const t3=document.createElementNS(NS,'text');
+      t3.setAttribute('x',n.w/2); t3.setAttribute('y',53); t3.setAttribute('text-anchor','middle');
+      t3.setAttribute('fill','#2dd4bf'); t3.setAttribute('font-size','10.5');
+      const tgt=n.lastPred.target.length>9?n.lastPred.target.slice(0,8)+'…':n.lastPred.target;
+      t3.textContent=tgt+': '+fmt(n.lastPred.value);
+      grp.appendChild(t3);
+    } else if(n.model){
+      const t3=document.createElementNS(NS,'text');
+      t3.setAttribute('x',n.w/2); t3.setAttribute('y',53); t3.setAttribute('text-anchor','middle');
+      t3.setAttribute('fill','#8a97a6'); t3.setAttribute('font-size','9.5');
+      t3.textContent='(awaiting inputs)';
+      grp.appendChild(t3);
+    }
+    grp.style.cursor='move';
+    grp.addEventListener('pointerdown',e=>startDrag(e,n));
+    g.appendChild(grp);
+  });
+}
+let drag=null;
+function svgPoint(e){
+  const svg=$('canvas'), r=svg.getBoundingClientRect();
+  const vb=svg.viewBox.baseVal;
+  return { x:(e.clientX-r.left)/r.width*vb.width, y:(e.clientY-r.top)/r.height*vb.height };
+}
+function startDrag(e,n){
+  e.preventDefault();
+  if(state.connectMode){
+    if(!state.connectFrom){ state.connectFrom=n.id; state.sel=n.id; renderDiagram();
+      $('hintConnect').textContent='click target component…'; }
+    else if(state.connectFrom!==n.id){
+      state.wires.push({id:'w'+(uid++),from:state.connectFrom,to:n.id});
+      state.connectFrom=null; $('hintConnect').textContent='connected. pick next source…';
+      renderDiagram();
+    }
+    return;
+  }
+  state.sel=n.id;
+  const p=svgPoint(e);
+  drag={n, dx:p.x-n.x, dy:p.y-n.y};
+  renderDiagram(); renderNodeList();
+  window.addEventListener('pointermove',onDrag);
+  window.addEventListener('pointerup',endDrag);
+}
+function onDrag(e){
+  if(!drag)return;
+  const p=svgPoint(e);
+  drag.n.x=Math.round(p.x-drag.dx); drag.n.y=Math.round(p.y-drag.dy);
+  renderDiagram();
+}
+function endDrag(){ drag=null;
+  window.removeEventListener('pointermove',onDrag);
+  window.removeEventListener('pointerup',endDrag); }
+
+function toggleConnect(){
+  state.connectMode=!state.connectMode; state.connectFrom=null;
+  $('btnConnect').textContent='🔗 Connect mode: '+(state.connectMode?'on':'off');
+  $('hintConnect').textContent=state.connectMode?'click a source component…':'';
+}
+function deleteSelected(){
+  if(!state.sel){alert('Select a component first.');return;}
+  state.wires=state.wires.filter(w=>w.from!==state.sel&&w.to!==state.sel);
+  state.nodes=state.nodes.filter(n=>n.id!==state.sel);
+  state.sel=null; renderDiagram(); refreshSelectors(); renderNodeList();
+}
+function autoLayout(){
+  const perRow=5, gx=150, gy=90, x0=50,y0=60;
+  state.nodes.forEach((n,i)=>{ n.x=x0+(i%perRow)*gx; n.y=y0+Math.floor(i/perRow)*gy; });
+  renderDiagram();
+}
+function renderNodeList(){
+  const el=$('nodeList');
+  if(!state.nodes.length){el.innerHTML='<span class="muted">No components yet.</span>';return;}
+  el.innerHTML=state.nodes.map(n=>
+    `<span class="pill" style="cursor:pointer;${state.sel===n.id?'border-color:var(--amber)':''}"
+      onclick="selectNode('${n.id}')">${n.type}: ${n.label}${n.model?' <span class="badge">ML</span>':''}</span>`
+  ).join('');
+}
+function selectNode(id){ state.sel=id; renderDiagram(); renderNodeList(); }
+
+/* =========================================================================
+   PARAM EDITOR
+   ========================================================================= */
+function renderParamEditor(){
+  const id=$('paramSelect').value;
+  const n=state.nodes.find(x=>x.id===id);
+  const box=$('paramEditor');
+  if(!n){box.innerHTML='';$('paramSummary').innerHTML='Select a component.';return;}
+  let rows=Object.entries(n.params).map(([k,v],i)=>`
+    <div class="kv">
+      <input type="text" value="${esc(k)}" onchange="renameParam('${n.id}',${i},this.value)">
+      <input type="text" value="${esc(v)}" onchange="setParamVal('${n.id}','${esc(k)}',this.value)">
+      <button class="danger" onclick="delParam('${n.id}','${esc(k)}')">✕</button>
+    </div>`).join('');
+  box.innerHTML=`
+    <label class="fld">Label</label>
+    <input type="text" value="${esc(n.label)}" onchange="setLabel('${n.id}',this.value)">
+    <label class="fld">Type</label>
+    <select onchange="setType('${n.id}',this.value)">
+      ${COMP_TYPES.map(t=>`<option ${t===n.type?'selected':''}>${t}</option>`).join('')}
+    </select>
+    <label class="fld">Parameters (key / value)</label>
+    ${rows||'<div class="muted small">No parameters yet.</div>'}
+    <button style="margin-top:8px" onclick="addParam('${n.id}')">＋ Add parameter</button>`;
+  renderParamSummary(n);
+}
+function renderParamSummary(n){
+  const s=$('paramSummary');
+  const pr=Object.entries(n.params);
+  s.innerHTML=`<b style="color:var(--ink)">${esc(n.label)}</b> · <span class="muted">${n.type}</span><br><br>`+
+    (pr.length? pr.map(([k,v])=>`<div class="metric"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')
+              : '<span class="muted">No parameters set.</span>')+
+    `<br><span class="small ${n.model?'ok':'muted'}">${n.model?'✓ trained model attached':'no model trained yet'}</span>`+
+    `<br><span class="small ${n.data?'ok':'muted'}">${n.data?('✓ data: '+n.data.rows.length+' rows'):'no data uploaded'}</span>`;
+}
+function addParam(id){const n=find(id);let k='param'+(Object.keys(n.params).length+1);n.params[k]='';renderParamEditor();}
+function delParam(id,k){const n=find(id);delete n.params[k];renderParamEditor();renderNodeList();}
+function setParamVal(id,k,v){find(id).params[k]=v;renderParamSummary(find(id));}
+function renameParam(id,i,nk){const n=find(id);const e=Object.entries(n.params);if(!e[i])return;
+  const[ok,ov]=e[i];delete n.params[ok];n.params[nk]=ov;renderParamEditor();}
+function setLabel(id,v){find(id).label=v;renderDiagram();renderNodeList();renderParamSummary(find(id));}
+function setType(id,v){find(id).type=v;renderDiagram();renderParamEditor();}
+
+/* =========================================================================
+   FILE PARSING  (CSV + XLSX, fully offline)
+   ========================================================================= */
+function handleData(input){
+  const f=input.files[0]; if(!f) return;
+  $('dataStatus').textContent='reading '+f.name+' …';
+  const ext=f.name.toLowerCase().split('.').pop();
+  if(ext==='csv'){
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ ingest(parseCSV(rd.result), f.name); }catch(e){ dataErr(e); } };
+    rd.readAsText(f);
+  } else if(ext==='xlsx'){
+    const rd=new FileReader();
+    rd.onload=async()=>{ try{ const t=await parseXLSX(rd.result); ingest(t,f.name); }catch(e){ dataErr(e); } };
+    rd.readAsArrayBuffer(f);
+  } else if(ext==='xls'){
+    dataErr(new Error('Legacy binary .xls is not supported offline. Please re-save the file as .xlsx or .csv in Excel and upload again.'));
+  } else { dataErr(new Error('Unsupported file type: .'+ext)); }
+}
+function dataErr(e){ $('dataStatus').innerHTML='<span class="bad">✕ '+esc(e.message)+'</span>'; }
+
+function parseCSV(txt){
+  // handles quoted fields and commas inside quotes
+  const rows=[]; let i=0, field='', row=[], inQ=false;
+  txt=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  while(i<txt.length){
+    const c=txt[i];
+    if(inQ){
+      if(c==='"'){ if(txt[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+    i++;
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  const cleaned=rows.filter(r=>r.some(x=>String(x).trim()!==''));
+  const headers=cleaned[0].map(h=>String(h).trim());
+  const data=cleaned.slice(1).map(r=>headers.map((_,j)=>r[j]!==undefined?r[j]:''));
+  return {headers, rows:data};
+}
+
+/* --- minimal offline XLSX reader: ZIP(central dir) -> deflate-raw -> XML --- */
+async function parseXLSX(buf){
+  if(typeof DecompressionStream==='undefined')
+    throw new Error('Your browser lacks DecompressionStream, needed to read .xlsx offline. Use a recent Chrome/Edge/Firefox/Safari, or upload .csv.');
+  const bytes=new Uint8Array(buf);
+  const files=await unzip(bytes);
+  const dec=new TextDecoder('utf-8');
+  // shared strings
+  let shared=[];
+  const ss=files['xl/sharedStrings.xml'];
+  if(ss){
+    const doc=new DOMParser().parseFromString(dec.decode(ss),'application/xml');
+    shared=[...doc.getElementsByTagName('si')].map(si=>
+      [...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
+  }
+  // first worksheet
+  const sheetKey=Object.keys(files).find(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k));
+  if(!sheetKey) throw new Error('No worksheet found inside the .xlsx file.');
+  const doc=new DOMParser().parseFromString(dec.decode(files[sheetKey]),'application/xml');
+  const rowsXml=[...doc.getElementsByTagName('row')];
+  const grid=[];
+  let maxCol=0;
+  rowsXml.forEach(rx=>{
+    const rowArr=[];
+    [...rx.getElementsByTagName('c')].forEach(c=>{
+      const ref=c.getAttribute('r')||'';
+      const col=colToIdx(ref.replace(/\d+/g,''));
+      const t=c.getAttribute('t');
+      let val='';
+      if(t==='s'){ const v=c.getElementsByTagName('v')[0]; if(v) val=shared[parseInt(v.textContent)]??''; }
+      else if(t==='inlineStr'){ const is=c.getElementsByTagName('t')[0]; if(is) val=is.textContent; }
+      else { const v=c.getElementsByTagName('v')[0]; if(v) val=v.textContent; }
+      rowArr[col]=val; if(col>maxCol)maxCol=col;
+    });
+    grid.push(rowArr);
+  });
+  const norm=grid.map(r=>{const a=[];for(let j=0;j<=maxCol;j++)a.push(r[j]!==undefined?r[j]:'');return a;})
+    .filter(r=>r.some(x=>String(x).trim()!==''));
+  if(!norm.length) throw new Error('The worksheet appears to be empty.');
+  const headers=norm[0].map(h=>String(h).trim());
+  return {headers, rows:norm.slice(1)};
+}
+function colToIdx(letters){let n=0;for(const ch of letters)n=n*26+(ch.charCodeAt(0)-64);return n-1;}
+
+async function unzip(bytes){
+  const dv=new DataView(bytes.buffer);
+  // find End Of Central Directory (0x06054b50)
+  let eocd=-1;
+  for(let i=bytes.length-22;i>=0;i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error('Not a valid .xlsx (ZIP) file.');
+  const count=dv.getUint16(eocd+10,true);
+  let off=dv.getUint32(eocd+16,true);
+  const out={};
+  for(let e=0;e<count;e++){
+    if(dv.getUint32(off,true)!==0x02014b50) break;
+    const method=dv.getUint16(off+10,true);
+    const compSize=dv.getUint32(off+20,true);
+    const nameLen=dv.getUint16(off+28,true);
+    const extraLen=dv.getUint16(off+30,true);
+    const commentLen=dv.getUint16(off+32,true);
+    const localOff=dv.getUint32(off+42,true);
+    const name=new TextDecoder().decode(bytes.subarray(off+46,off+46+nameLen));
+    // local header
+    const lNameLen=dv.getUint16(localOff+26,true);
+    const lExtraLen=dv.getUint16(localOff+28,true);
+    const dataStart=localOff+30+lNameLen+lExtraLen;
+    const comp=bytes.subarray(dataStart,dataStart+compSize);
+    if(name==='xl/sharedStrings.xml'||/^xl\/worksheets\/sheet\d+\.xml$/.test(name)){
+      out[name]= method===0 ? comp : await inflateRaw(comp);
+    }
+    off+=46+nameLen+extraLen+commentLen;
+  }
+  return out;
+}
+async function inflateRaw(u8){
+  const ds=new DecompressionStream('deflate-raw');
+  const stream=new Blob([u8]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/* =========================================================================
+   INGEST + DATA QUALITY  (multi-dataset per component: seasonal / golden data)
+   ========================================================================= */
+let dsUid=1;
+function newDsId(){ return 'ds'+(dsUid++)+'_'+Date.now().toString(36); }
+// Old configs / old single-upload flow only ever had n.data. This lazily
+// migrates any such node onto the n.datasets array without changing n.data's
+// identity, so everything that already reads n.data keeps working untouched.
+function ensureDatasets(n){
+  if(!n)return;
+  if(!Array.isArray(n.datasets)){
+    if(n.data && !n.data.id){ n.data.id=newDsId(); n.data.label=n.data.label||n.data.file||'Dataset 1'; n.data.season=n.data.season||''; }
+    n.datasets = n.data ? [n.data] : [];
+  }
+  if(!n.trainOpts) n.trainOpts={ strategy:'active', dsIds:n.datasets.map(d=>d.id), weights:{} };
+}
+function ingest(table,fname){
+  const compId=$('dataComp').value;
+  const n=find(compId);
+  if(!n){ dataErr(new Error('Add a component first, then attach data to it.')); return; }
+  ensureDatasets(n);
+  const labelInput=$('dataSeasonLabel');
+  const label=(labelInput&&labelInput.value.trim())||('Dataset '+(n.datasets.length+1));
+  const ds={ id:newDsId(), label, season:label, headers:table.headers, rows:table.rows, file:fname,
+    uploadedAt:new Date().toISOString().slice(0,10) };
+  n.datasets.push(ds);
+  n.data=ds;                                   // newest upload becomes the active/preview dataset
+  if(!n.trainOpts.dsIds.includes(ds.id)) n.trainOpts.dsIds.push(ds.id);
+  if(labelInput) labelInput.value='';
+  $('dataStatus').innerHTML='<span class="ok">✓ '+esc(fname)+' → '+esc(n.label)+' as "'+esc(label)+'" ('+table.rows.length+' rows, '+table.headers.length+' cols)</span>';
+  renderQuality(n); renderPreview(n);
+  initSelection(n); renderDataModelSetup(n); renderDatasetList(n);
+  refreshSelectors(); renderDiagram(); renderNodeList();
+}
+function renderDatasetList(n){
+  const box=$('dataDatasetsList'); if(!box||!n) return;
+  ensureDatasets(n);
+  if(!n.datasets.length){ box.innerHTML=''; return; }
+  box.innerHTML =
+    '<h3 style="color:var(--muted);font-size:12px;text-transform:uppercase">Datasets attached to '+esc(n.label)+' ('+n.datasets.length+')</h3>'+
+    '<div class="scroll" style="max-height:220px"><table><tr><th>Active</th><th>Label / season</th><th>File</th><th>Rows</th><th>Uploaded</th><th></th></tr>'+
+    n.datasets.map(d=>`<tr>
+      <td>${n.data&&n.data.id===d.id?'<span class="ok">● active</span>':`<button onclick="setActiveDataset('${n.id}','${d.id}')">use</button>`}</td>
+      <td><input type="text" value="${esc(d.label||'')}" style="max-width:170px" onchange="renameDataset('${n.id}','${d.id}',this.value)"></td>
+      <td class="small">${esc(d.file||'')}</td>
+      <td>${d.rows.length}</td>
+      <td class="small muted">${esc(d.uploadedAt||'')}</td>
+      <td><button class="danger" onclick="removeDataset('${n.id}','${d.id}')">✕</button></td>
+    </tr>`).join('')+
+    '</table></div>'+
+    '<div class="hint">"Active" is what tabs 3, 6 (BESS) preview and use as the default. Which dataset(s) actually feed training is chosen in tab 4.</div>';
+}
+function setActiveDataset(nodeId,dsId){
+  const n=find(nodeId); if(!n)return; ensureDatasets(n);
+  const d=n.datasets.find(x=>x.id===dsId); if(!d)return;
+  n.data=d;
+  renderQuality(n); renderPreview(n); initSelection(n); renderDataModelSetup(n); renderDatasetList(n);
+  refreshSelectors(); renderDiagram(); renderNodeList();
+}
+function renameDataset(nodeId,dsId,val){
+  const n=find(nodeId); if(!n)return; const d=(n.datasets||[]).find(x=>x.id===dsId); if(!d)return;
+  d.label=val; d.season=val; renderDatasetList(n);
+}
+function removeDataset(nodeId,dsId){
+  const n=find(nodeId); if(!n)return; ensureDatasets(n);
+  if(!confirm('Remove this dataset from '+n.label+'?'))return;
+  n.datasets=n.datasets.filter(x=>x.id!==dsId);
+  if(n.trainOpts) n.trainOpts.dsIds=n.trainOpts.dsIds.filter(id=>id!==dsId);
+  if(n.data&&n.data.id===dsId) n.data=n.datasets[n.datasets.length-1]||null;
+  if(n.data){ renderQuality(n); renderPreview(n); initSelection(n); renderDataModelSetup(n); }
+  else{ ['dataQuality','dataPreview','dataModelSetup'].forEach(id=>{if($(id))$(id).innerHTML='';}); }
+  renderDatasetList(n); refreshSelectors(); renderDiagram(); renderNodeList();
+}
+function renderQuality(n){
+  const {headers,rows}=n.data;
+  const stats=headers.map((h,j)=>{
+    let num=0,blank=0,nonnum=0;
+    rows.forEach(r=>{const v=String(r[j]??'').trim();
+      if(v==='')blank++; else if(isFinite(Number(v)))num++; else nonnum++;});
+    return {h,num,blank,nonnum,total:rows.length};
+  });
+  $('dataQuality').innerHTML='<h3 style="color:var(--muted);font-size:12px;text-transform:uppercase">Data-quality ledger</h3>'+
+    '<div class="scroll"><table><tr><th>Column</th><th>Numeric</th><th>Non-numeric</th><th>Blank</th><th>Usable as feature?</th></tr>'+
+    stats.map(s=>`<tr><td>${esc(s.h)}</td><td>${s.num}</td><td class="${s.nonnum?'warn':''}">${s.nonnum}</td>
+      <td class="${s.blank?'warn':''}">${s.blank}</td>
+      <td>${s.num> s.total*0.5 ? '<span class="ok">yes</span>':'<span class="bad">mostly non-numeric</span>'}</td></tr>`).join('')+
+    '</table></div>';
+}
+function renderPreview(n){
+  const {headers,rows}=n.data;
+  const show=rows.slice(0,12);
+  $('dataPreview').innerHTML='<h3 style="color:var(--muted);font-size:12px;text-transform:uppercase">Preview (first 12 rows)</h3>'+
+    '<div class="scroll"><table><tr>'+headers.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr>'+
+    show.map(r=>'<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>').join('')+'</table></div>';
+}
+
+/* ---- model setup: choose inputs & output in the Data tab (remembered) ---- */
+function numericCols(n){
+  // Scan the WHOLE column (not just the first rows) so a column whose numbers
+  // start later in the file is never wrongly dropped — all data is considered.
+  return n.data.headers.filter((h,j)=>{
+    let ok=0;n.data.rows.forEach(r=>{if(String(r[j]).trim()!==''&&isFinite(Number(r[j])))ok++;});
+    return ok>2;
+  });
+}
+function initSelection(n){
+  const cols=numericCols(n);
+  if(!Array.isArray(n.selFeats))n.selFeats=[];
+  n.selFeats=n.selFeats.filter(f=>cols.includes(f));        // drop columns no longer present
+  if(n.selTarget&&!cols.includes(n.selTarget))n.selTarget='';
+}
+function renderDataModelSetup(n){
+  const box=$('dataModelSetup');if(!box)return;
+  const cols=numericCols(n);
+  if(!cols.length){box.innerHTML='<span class="warn small">No numeric columns detected — can’t set up a model from this file.</span>';return;}
+  box.innerHTML=`
+    <h3 style="color:var(--muted);font-size:12px;text-transform:uppercase">Model setup — choose inputs &amp; output</h3>
+    <div class="caveat" style="margin:0 0 10px">Pick the <b>output to predict</b> for <b>${esc(n.label)}</b> (e.g. DC power) and the <b>input features</b> it depends on. These choices are remembered for training (tab 4) and prediction (tab 5) — set them once here.</div>
+    <label class="fld">Output / target column</label>
+    <select id="dataTarget">${cols.map(c=>`<option ${c===n.selTarget?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <label class="fld">Input feature columns</label>
+    <div class="feat-list">${cols.map(c=>`<label><input type="checkbox" class="datafeat" value="${esc(c)}" ${n.selFeats.includes(c)?'checked':''}>${esc(c)}</label>`).join('')}</div>
+    <div class="hint" id="dataSelHint"></div>`;
+  if(!n.selTarget)n.selTarget=$('dataTarget').value;
+  $('dataTarget').addEventListener('change',e=>{n.selTarget=e.target.value;syncSelHint(n);syncTrainCols();});
+  box.querySelectorAll('.datafeat').forEach(cb=>cb.addEventListener('change',()=>{
+    n.selFeats=[...box.querySelectorAll('.datafeat:checked')].map(x=>x.value);
+    syncSelHint(n);syncTrainCols();
+  }));
+  syncSelHint(n);
+}
+function syncSelHint(n){
+  const el=$('dataSelHint');if(!el)return;
+  if(n.selFeats.includes(n.selTarget)){el.innerHTML='<span class="bad">Output cannot also be an input — unselect it from the features.</span>';return;}
+  el.innerHTML=n.selFeats.length
+    ? `<span class="ok">✓ ${n.selFeats.length} input(s) → ${esc(n.selTarget)}. Now train it in tab 4.</span>`
+    : '<span class="warn">Select at least one input feature.</span>';
+}
+function onDataCompChange(){
+  const n=find($('dataComp').value);
+  if(n)ensureDatasets(n);
+  if(n&&n.data){renderQuality(n);renderPreview(n);initSelection(n);renderDataModelSetup(n);
+    $('dataStatus').innerHTML='<span class="muted small">showing saved data for '+esc(n.label)+' · '+n.data.rows.length+' rows</span>';}
+  else{['dataQuality','dataPreview','dataModelSetup'].forEach(id=>{if($(id))$(id).innerHTML='';});
+    $('dataStatus').innerHTML='<span class="muted small">no data uploaded for this component yet</span>';}
+  if(n)renderDatasetList(n); else if($('dataDatasetsList'))$('dataDatasetsList').innerHTML='';
+}
+
+/* =========================================================================
+   ML : standardize + gradient-descent (linear ridge / 1-hidden-layer MLP)
+   ========================================================================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function buildMatrix(n,featCols,targetCol){
+  const hi=n.data.headers;
+  const fi=featCols.map(c=>hi.indexOf(c));
+  const ti=hi.indexOf(targetCol);
+  const X=[],Y=[]; let dropped=0;
+  n.data.rows.forEach(r=>{
+    const xs=fi.map(j=>Number(r[j])); const y=Number(r[ti]);
+    if(xs.some(v=>!isFinite(v))||!isFinite(y)){dropped++;return;}
+    X.push(xs); Y.push(y);
+  });
+  return {X,Y,dropped};
+}
+/* ---- multi-dataset training: user-chosen strategy across seasonal/golden datasets ---- */
+function buildMergedMatrix(n,featCols,targetCol,opt){
+  ensureDatasets(n);
+  const all=n.datasets&&n.datasets.length?n.datasets:(n.data?[n.data]:[]);
+  let use=all;
+  if(opt&&all.length>1){
+    if(opt.strategy==='select'||opt.strategy==='weighted'){
+      const ids=new Set(opt.dsIds&&opt.dsIds.length?opt.dsIds:all.map(d=>d.id));
+      use=all.filter(d=>ids.has(d.id));
+    } else if(opt.strategy==='active'){
+      use=n.data?[n.data]:all;
+    } // 'all' -> use=all (default)
+  } else if(n.data){
+    use=[n.data];
+  }
+  if(!use.length) use=n.data?[n.data]:[];
+
+  const X=[],Y=[]; let dropped=0; const perDs=[];
+  use.forEach(ds=>{
+    const hi=ds.headers||[];
+    const fi=featCols.map(c=>hi.indexOf(c));
+    const ti=hi.indexOf(targetCol);
+    if(fi.some(j=>j<0)||ti<0){ perDs.push({ds,used:0,skippedCols:true}); return; }
+    const weight=(opt&&opt.strategy==='weighted')?Math.max(1,Math.round(opt.weights[ds.id]||1)):1;
+    let used=0;
+    (ds.rows||[]).forEach(r=>{
+      const xs=fi.map(j=>Number(r[j])); const y=Number(r[ti]);
+      if(xs.some(v=>!isFinite(v))||!isFinite(y)){dropped++;return;}
+      for(let rep=0;rep<weight;rep++){ X.push(xs.slice()); Y.push(y); }
+      used++;
+    });
+    perDs.push({ds,used,weight});
+  });
+  return {X,Y,dropped,perDs};
+}
+function standardize(X){
+  const m=X[0].length, mean=Array(m).fill(0), std=Array(m).fill(0);
+  X.forEach(r=>r.forEach((v,j)=>mean[j]+=v)); mean.forEach((_,j)=>mean[j]/=X.length);
+  X.forEach(r=>r.forEach((v,j)=>std[j]+=(v-mean[j])**2));
+  std.forEach((_,j)=>{std[j]=Math.sqrt(std[j]/X.length)||1;});
+  const Z=X.map(r=>r.map((v,j)=>(v-mean[j])/std[j]));
+  return {Z,mean,std};
+}
+function stdVec(Y){const mean=Y.reduce((a,b)=>a+b,0)/Y.length;
+  let s=0;Y.forEach(v=>s+=(v-mean)**2);s=Math.sqrt(s/Y.length)||1;
+  return {Zy:Y.map(v=>(v-mean)/s),mean,std:s};}
+
+function trainModel(){
+  const n=find($('trainComp').value);
+  if(!n||!n.data){alert('Attach data to this component first (tab 3).');return;}
+  const target=$('targetCol').value;
+  const feats=[...document.querySelectorAll('.featchk:checked')].map(c=>c.value);
+  if(!feats.length){alert('Select at least one feature.');return;}
+  if(feats.includes(target)){alert('Target cannot also be a feature.');return;}
+  n.selTarget=target; n.selFeats=feats;   // remember the choice on the component
+
+  ensureDatasets(n);
+  const {X,Y,dropped}=buildMergedMatrix(n,feats,target,n.trainOpts);
+  if(X.length<8){alert('Not enough clean numeric rows to train ('+X.length+'). Need ≥ 8.');return;}
+
+  // train/val split (shuffled, seeded)
+  const rng=mulberry32(12345);
+  const idx=[...Array(X.length).keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  const valN=Math.max(1,Math.floor(X.length*parseFloat($('valSplit').value)));
+  const vIdx=new Set(idx.slice(0,valN));
+  const Xtr=[],Ytr=[],Xva=[],Yva=[];
+  idx.forEach(i=>{ if(vIdx.has(i)){Xva.push(X[i]);Yva.push(Y[i]);} else {Xtr.push(X[i]);Ytr.push(Y[i]);} });
+
+  const sx=standardize(Xtr), sy=stdVec(Ytr);
+  const Ztr=sx.Z, Ytrn=sy.Zy;
+  const Zva=Xva.map(r=>r.map((v,j)=>(v-sx.mean[j])/sx.std[j]));
+  const Yvan=Yva.map(v=>(v-sy.mean)/sy.std);
+
+  const type=$('modelType').value;
+  const lr=parseFloat($('lr').value), epochs=parseInt($('epochs').value),
+        lam=parseFloat($('lambda').value), H=parseInt($('hidden').value);
+  const nf=feats.length;
+
+  const rw=mulberry32(999);
+  let model, forward, backward;
+  const hist={train:[],val:[]};
+
+  if(type==='linear'){
+    let w=Array(nf).fill(0).map(()=>(rw()-0.5)*0.1), b=0;
+    forward=(z)=>z.reduce((s,v,j)=>s+v*w[j],0)+b;
+    for(let ep=0;ep<epochs;ep++){
+      const dw=Array(nf).fill(0);let db=0;
+      for(let i=0;i<Ztr.length;i++){const p=forward(Ztr[i]);const e=p-Ytrn[i];
+        for(let j=0;j<nf;j++)dw[j]+=e*Ztr[i][j];db+=e;}
+      for(let j=0;j<nf;j++)w[j]-=lr*(dw[j]/Ztr.length+lam*w[j]);
+      b-=lr*(db/Ztr.length);
+      hist.train.push(mse(Ztr,Ytrn,forward));
+      hist.val.push(Zva.length?mse(Zva,Yvan,forward):null);
+    }
+    model={kind:'linear',w,b};
+  } else {
+    let W1=Array.from({length:nf},()=>Array.from({length:H},()=>(rw()-0.5)*Math.sqrt(2/nf)));
+    let b1=Array(H).fill(0);
+    let W2=Array.from({length:H},()=>(rw()-0.5)*Math.sqrt(2/H));
+    let b2=0;
+    const fwd=(z)=>{const a1=[];for(let h=0;h<H;h++){let s=b1[h];for(let j=0;j<nf;j++)s+=z[j]*W1[j][h];a1[h]=Math.tanh(s);}
+      let o=b2;for(let h=0;h<H;h++)o+=a1[h]*W2[h];return{a1,o};};
+    forward=(z)=>fwd(z).o;
+    for(let ep=0;ep<epochs;ep++){
+      const dW1=Array.from({length:nf},()=>Array(H).fill(0)),db1=Array(H).fill(0),
+            dW2=Array(H).fill(0);let db2=0;
+      for(let i=0;i<Ztr.length;i++){
+        const z=Ztr[i];const {a1,o}=fwd(z);const e=o-Ytrn[i];
+        db2+=e;for(let h=0;h<H;h++)dW2[h]+=e*a1[h];
+        for(let h=0;h<H;h++){const dz1=e*W2[h]*(1-a1[h]*a1[h]);db1[h]+=dz1;
+          for(let j=0;j<nf;j++)dW1[j][h]+=dz1*z[j];}
+      }
+      const N=Ztr.length;
+      for(let h=0;h<H;h++){W2[h]-=lr*(dW2[h]/N+lam*W2[h]);b1[h]-=lr*(db1[h]/N);}
+      b2-=lr*(db2/N);
+      for(let j=0;j<nf;j++)for(let h=0;h<H;h++)W1[j][h]-=lr*(dW1[j][h]/N+lam*W1[j][h]);
+      hist.train.push(mse(Ztr,Ytrn,forward));
+      hist.val.push(Zva.length?mse(Zva,Yvan,forward):null);
+    }
+    model={kind:'mlp',W1,b1,W2,b2,H};
+  }
+
+  // metrics on validation (original units)
+  const predVa=Xva.map((r,i)=>{const z=Zva[i];return forward(z)*sy.std+sy.mean;});
+  const met=regMetrics(Yva,predVa);
+
+  // feature ranges for extrapolation warnings
+  const ranges=feats.map((f,j)=>{const col=X.map(r=>r[j]);return {min:Math.min(...col),max:Math.max(...col)};});
+
+  n.model={ type, feats, target, sx, sy, model, ranges,
+    metrics:met, hist, dropped, nTrain:Xtr.length, nVal:Xva.length };
+
+  $('trainMsg').innerHTML=`<span class="ok">✓ trained on ${Xtr.length} rows, validated on ${Xva.length}.</span>`+
+    (dropped?` <span class="warn">${dropped} row(s) dropped (non-numeric/blank).</span>`:'');
+  drawLoss(hist); showMetrics(n.model);
+  renderDiagram(); renderNodeList(); refreshSelectors();
+}
+function mse(Z,Y,f){let s=0;for(let i=0;i<Z.length;i++){const e=f(Z[i])-Y[i];s+=e*e;}return s/Z.length;}
+function regMetrics(y,p){
+  const n=y.length,mean=y.reduce((a,b)=>a+b,0)/n;
+  let ssr=0,sst=0,mae=0;
+  for(let i=0;i<n;i++){ssr+=(y[i]-p[i])**2;sst+=(y[i]-mean)**2;mae+=Math.abs(y[i]-p[i]);}
+  return {r2:sst>0?1-ssr/sst:0, rmse:Math.sqrt(ssr/n), mae:mae/n};
+}
+/* ---------- TensorFlow.js deep NN (additive; loads on demand) ---------- */
+let _tfLoading=null;
+function ensureTF(){
+  if(window.tf) return Promise.resolve();
+  if(_tfLoading) return _tfLoading;
+  _tfLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4/dist/tf.min.js';
+    s.onload=()=>res();
+    s.onerror=()=>rej(new Error('Could not load TensorFlow.js — check your internet connection.'));
+    document.head.appendChild(s);
+  });
+  return _tfLoading;
+}
+async function trainNN(){
+  const n=find($('trainComp').value);
+  if(!n||!n.data){alert('Attach data to this component first (tab 3).');return;}
+  const target=$('targetCol').value;
+  const feats=[...document.querySelectorAll('.featchk:checked')].map(c=>c.value);
+  if(!feats.length){alert('Select at least one feature.');return;}
+  if(feats.includes(target)){alert('Target cannot also be a feature.');return;}
+  n.selTarget=target; n.selFeats=feats;
+
+  ensureDatasets(n);
+  const {X,Y,dropped}=buildMergedMatrix(n,feats,target,n.trainOpts);   // uses the chosen dataset(s)
+  if(X.length<10){alert('Not enough clean numeric rows to train ('+X.length+'). Need ≥ 10.');return;}
+
+  $('nnMsg').innerHTML='<span class="muted">loading TensorFlow.js…</span>';
+  try{ await ensureTF(); }catch(e){ $('nnMsg').innerHTML='<span class="bad">✕ '+esc(e.message)+'</span>'; return; }
+
+  // shuffled train/val split (seeded, reproducible)
+  const rng=mulberry32(12345);
+  const idx=[...Array(X.length).keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  const valN=Math.max(1,Math.floor(X.length*(parseFloat($('valSplit').value)||0.2)));
+  const vSet=new Set(idx.slice(0,valN));
+  const Xtr=[],Ytr=[],Xva=[],Yva=[];
+  idx.forEach(i=>{ if(vSet.has(i)){Xva.push(X[i]);Yva.push(Y[i]);} else {Xtr.push(X[i]);Ytr.push(Y[i]);} });
+
+  const sx=standardize(Xtr), sy=stdVec(Ytr);
+  const Ztr=sx.Z, Ytrn=sy.Zy;
+  const Zva=Xva.map(r=>r.map((v,j)=>(v-sx.mean[j])/sx.std[j]));
+  const Yvan=Yva.map(v=>(v-sy.mean)/sy.std);
+
+  const nf=feats.length;
+  let layers=($('nnLayers').value||'16,8').split(',').map(s=>parseInt(s.trim())).filter(v=>v>0);
+  if(!layers.length)layers=[8];
+  const act=$('nnAct').value, optName=$('nnOpt').value, lr=parseFloat($('nnLr').value)||0.01;
+  const epochs=parseInt($('nnEpochs').value)||150, batch=Math.max(1,parseInt($('nnBatch').value)||32);
+
+  if(n.model&&n.model.model&&n.model.model.tfModel){ try{n.model.model.tfModel.dispose();}catch(e){} }
+
+  const model=tf.sequential();
+  model.add(tf.layers.dense({units:layers[0],activation:act,inputShape:[nf]}));
+  for(let k=1;k<layers.length;k++) model.add(tf.layers.dense({units:layers[k],activation:act}));
+  model.add(tf.layers.dense({units:1}));                       // linear output for regression
+  model.compile({optimizer: optName==='sgd'?tf.train.sgd(lr):tf.train.adam(lr), loss:'meanSquaredError'});
+
+  const xtr=tf.tensor2d(Ztr), ytr=tf.tensor2d(Ytrn.map(v=>[v]));
+  const xva=tf.tensor2d(Zva), yva=tf.tensor2d(Yvan.map(v=>[v]));
+  const hist={train:[],val:[]};
+  await model.fit(xtr,ytr,{epochs,batchSize:batch,validationData:[xva,yva],shuffle:true,verbose:0,
+    callbacks:{onEpochEnd:(ep,logs)=>{
+      hist.train.push(logs.loss); hist.val.push(logs.val_loss!=null?logs.val_loss:null);
+      if(ep%2===0||ep===epochs-1){
+        $('nnMsg').innerHTML='<span class="muted">training… epoch '+(ep+1)+'/'+epochs+' · loss '+logs.loss.toFixed(4)+'</span>';
+        drawLoss(hist);
+      }
+    }}});
+
+  const pT=model.predict(xva); const pStd=Array.from(pT.dataSync()); pT.dispose();
+  const predVa=pStd.map(v=>v*sy.std+sy.mean);
+  const met=regMetrics(Yva,predVa);
+  xtr.dispose();ytr.dispose();xva.dispose();yva.dispose();
+
+  const ranges=feats.map((f,j)=>{const col=X.map(r=>r[j]);return {min:Math.min(...col),max:Math.max(...col)};});
+
+  n.model={ type:'nn', feats, target, sx, sy,
+    model:{ kind:'tfnn', tfModel:model, arch:layers, activation:act },
+    ranges, metrics:met, hist, dropped, nTrain:Xtr.length, nVal:Xva.length };
+
+  $('nnMsg').innerHTML=`<span class="ok">✓ NN [${layers.join('-')}] trained on ${Xtr.length} rows, validated on ${Xva.length}.</span>`+
+    (dropped?` <span class="warn">${dropped} row(s) dropped (non-numeric/blank).</span>`:'');
+  drawLoss(hist); showMetrics(n.model);
+  renderDiagram(); renderNodeList(); refreshSelectors();
+}
+
+function predictOne(m,xraw){
+  const z=xraw.map((v,j)=>(v-m.sx.mean[j])/m.sx.std[j]);
+  if(m.model.kind==='tfnn'){
+    const out=m.model.tfModel.predict(tf.tensor2d([z]));
+    const v=out.dataSync()[0]; out.dispose();
+    return v*m.sy.std+m.sy.mean;
+  }
+  let out;
+  if(m.model.kind==='linear'){out=m.model.b;for(let j=0;j<z.length;j++)out+=z[j]*m.model.w[j];}
+  else {const M=m.model;let o=M.b2;for(let h=0;h<M.H;h++){let s=M.b1[h];
+    for(let j=0;j<z.length;j++)s+=z[j]*M.W1[j][h];o+=Math.tanh(s)*M.W2[h];}out=o;}
+  return out*m.sy.std+m.sy.mean;
+}
+
+/* ---------- charts / metric display ---------- */
+function drawLoss(hist){
+  const svg=$('lossChart');svg.innerHTML='';
+  const W=320,H=200,pad=32;
+  const all=hist.train.concat(hist.val.filter(v=>v!=null));
+  const mx=Math.max(...all,1e-9),mn=Math.min(...all,0);
+  const X=i=>pad+i/(hist.train.length-1||1)*(W-pad-8);
+  const Y=v=>H-pad-((v-mn)/((mx-mn)||1))*(H-pad-10);
+  // axes
+  add(svg,'line',{x1:pad,y1:H-pad,x2:W-6,y2:H-pad,stroke:'#26323f'});
+  add(svg,'line',{x1:pad,y1:10,x2:pad,y2:H-pad,stroke:'#26323f'});
+  add(svg,'text',{x:4,y:16,fill:'#8a97a6','font-size':9},mx.toExponential(1));
+  add(svg,'text',{x:4,y:H-pad,fill:'#8a97a6','font-size':9},mn.toFixed(2));
+  const path=(arr,col)=>{let d='';arr.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+X(i)+','+Y(v);});
+    add(svg,'path',{d,stroke:col,fill:'none','stroke-width':1.6});};
+  path(hist.train,'#ff9a2e'); path(hist.val,'#5aa9ff');
+}
+function add(svg,tag,attrs,text){const el=document.createElementNS(NS,tag);
+  for(const k in attrs)el.setAttribute(k,attrs[k]);if(text!=null)el.textContent=text;svg.appendChild(el);return el;}
+function showMetrics(m){
+  const r2=m.metrics.r2;
+  const q= r2>0.85?'strong':r2>0.6?'moderate':r2>0.3?'weak':'poor';
+  $('metrics').innerHTML=`
+    <div class="metric"><span>R² (accuracy proxy)</span><b class="${r2>0.6?'ok':'warn'}">${r2.toFixed(3)} · ${q}</b></div>
+    <div class="metric"><span>RMSE (orig units)</span><b>${fmt(m.metrics.rmse)}</b></div>
+    <div class="metric"><span>MAE (orig units)</span><b>${fmt(m.metrics.mae)}</b></div>
+    <div class="metric"><span>Final train loss</span><b>${m.hist.train.at(-1).toExponential(2)}</b></div>
+    <div class="metric"><span>Final val loss</span><b>${(m.hist.val.at(-1)??0).toExponential(2)}</b></div>
+    <div class="small muted" style="margin-top:8px">Model: ${m.type==='nn'?('deep NN ['+((m.model&&m.model.arch)||[]).join('-')+'] '+((m.model&&m.model.activation)||'')):m.type==='mlp'?'1-hidden-layer net':'ridge/linear'} · ${m.feats.length} feature(s) → ${esc(m.target)}.
+    ${r2<0.3?'<br><span class="warn">Low R² — features may not explain the target, or the relationship is more complex than this model captures.</span>':''}</div>`;
+}
+
+/* =========================================================================
+   PREDICTION UI
+   ========================================================================= */
+function renderPredInputs(){
+  const n=find($('predComp').value);
+  const box=$('predInputs'); const out=$('predOut');
+  if(!n||!n.model){box.innerHTML='';out.innerHTML='<span class="muted">This component has no trained model. Train one in tab 4.</span>';return;}
+  box.innerHTML=n.model.feats.map((f,j)=>{
+    const rg=n.model.ranges[j];
+    return `<div><label class="fld">${esc(f)}</label>
+      <input type="number" class="predin" data-i="${j}" placeholder="${rg.min.toFixed(2)} … ${rg.max.toFixed(2)}">
+      <div class="hint">trained range ${fmt(rg.min)} – ${fmt(rg.max)}</div></div>`;
+  }).join('');
+  out.innerHTML='<span class="muted">Enter values and press Predict.</span>';
+}
+function runPredict(){
+  const n=find($('predComp').value);
+  if(!n||!n.model)return;
+  const ins=[...document.querySelectorAll('.predin')];
+  const x=[]; let warn=[];
+  for(const el of ins){
+    const v=Number(el.value);
+    if(el.value===''||!isFinite(v)){alert('Fill all feature inputs with numbers.');return;}
+    const j=+el.dataset.i, rg=n.model.ranges[j];
+    if(v<rg.min||v>rg.max) warn.push(n.model.feats[j]);
+    x.push(v);
+  }
+  const y=predictOne(n.model,x);
+  n.lastPred={value:y,target:n.model.target}; renderDiagram(); renderNodeList();
+  $('predOut').innerHTML=`
+    <div class="muted small">Predicted <b style="color:var(--ink)">${esc(n.model.target)}</b> for <b style="color:var(--ink)">${esc(n.label)}</b>:</div>
+    <div class="predbox">${fmt(y)}</div>
+    <div class="small muted" style="margin-top:8px">Model R² on validation = ${n.model.metrics.r2.toFixed(3)}, RMSE ≈ ${fmt(n.model.metrics.rmse)}.
+    Treat this as an estimate with roughly ±${fmt(n.model.metrics.rmse)} typical error.</div>
+    ${warn.length?`<div class="caveat" style="margin-top:10px">⚠ Extrapolation: ${warn.map(esc).join(', ')} outside the trained range. Prediction is unreliable here.</div>`:''}`;
+}
+
+/* =========================================================================
+   PLANT SCENARIO ENGINE  (component-wise output with automatic chaining)
+   ========================================================================= */
+let scenarioVals={};
+function trainedNodes(){return state.nodes.filter(n=>n.model);}
+function targetIndex(){const m={};trainedNodes().forEach(n=>{if(!(n.model.target in m))m[n.model.target]=n;});return m;}
+function driverFeatures(){
+  // a feature is a "driver" (external input) unless it equals some OTHER trained node's target
+  const ti=targetIndex();const seen=new Set();const list=[];
+  trainedNodes().forEach(n=>n.model.feats.forEach((f,k)=>{
+    if(ti[f]&&ti[f].id!==n.id)return;            // chained from upstream
+    if(!seen.has(f)){seen.add(f);
+      const rg=n.model.ranges[k];
+      list.push({name:f,min:rg?rg.min:null,max:rg?rg.max:null});}
+  }));
+  return list;
+}
+function buildScenarioPanel(){
+  const box=$('scenarioDrivers');if(!box)return;
+  if(!trainedNodes().length){
+    box.innerHTML='<span class="muted small">No trained components yet. Train models in tab 4, then evaluate the plant here.</span>';
+    $('scenarioResults').innerHTML='';return;
+  }
+  const drivers=driverFeatures();
+  box.innerHTML=drivers.map((d,i)=>`<div><label class="fld">${esc(d.name)}</label>
+    <input type="number" class="scendrv" data-i="${i}"
+      value="${scenarioVals[d.name]!=null?esc(scenarioVals[d.name]):''}"
+      placeholder="${d.min!=null?esc(fmt(d.min)+' … '+fmt(d.max)):'external driver'}">
+    <div class="hint">${d.min!=null?'trained range '+fmt(d.min)+' – '+fmt(d.max):'external driver'}</div></div>`).join('')
+    || '<span class="muted small">All component inputs are chained from upstream — no external drivers needed.</span>';
+  box.querySelectorAll('.scendrv').forEach(el=>el.addEventListener('input',()=>{
+    scenarioVals[drivers[+el.dataset.i].name]=el.value;
+  }));
+}
+function evaluatePlant(){
+  const tn=trainedNodes();
+  if(!tn.length){alert('Train at least one component model first (tab 4).');return;}
+  const ti=targetIndex();
+  const drivers=driverFeatures();
+  const dv={};const missing=[];
+  drivers.forEach(d=>{const raw=scenarioVals[d.name];const v=Number(raw);
+    if(raw==null||raw===''||!isFinite(v))missing.push(d.name);else dv[d.name]=v;});
+  if(missing.length){
+    $('scenarioResults').innerHTML='<div class="caveat" style="margin:0">⚠ Enter numeric values for all drivers first: <b>'+
+      missing.map(esc).join(', ')+'</b>. Nothing was assumed.</div>';return;
+  }
+  // dataflow: evaluate a node once all its chained inputs are ready
+  const computed={};let remaining=tn.slice();let progress=true;
+  while(remaining.length&&progress){progress=false;
+    for(const n of [...remaining]){
+      const inputs=[];let ready=true;
+      for(let k=0;k<n.model.feats.length;k++){const f=n.model.feats[k];
+        if(ti[f]&&ti[f].id!==n.id){const up=ti[f];
+          if(computed[up.id]!=null)inputs.push({name:f,val:computed[up.id].value,src:'↑ '+up.label});
+          else{ready=false;break;}
+        } else inputs.push({name:f,val:dv[f],src:'driver'});
+      }
+      if(ready){
+        const x=inputs.map(z=>z.val);
+        const y=predictOne(n.model,x);
+        const warn=[];n.model.feats.forEach((f,k)=>{const rg=n.model.ranges[k];
+          if(rg&&(x[k]<rg.min||x[k]>rg.max))warn.push(f);});
+        computed[n.id]={value:y,inputs,target:n.model.target,warn};
+        n.lastPred={value:y,target:n.model.target};
+        remaining=remaining.filter(z=>z.id!==n.id);progress=true;
+      }
+    }
+  }
+  renderScenarioResults(computed,remaining);renderDiagram();renderNodeList();
+}
+function renderScenarioResults(computed,remaining){
+  const order=state.nodes.filter(n=>computed[n.id]);
+  let h=order.map(n=>{const c=computed[n.id];
+    return `<div style="border-bottom:1px solid var(--line);padding:8px 0">
+      <div class="row" style="justify-content:space-between">
+        <span><b style="color:var(--ink)">${esc(n.label)}</b> <span class="muted small">(${n.type})</span></span>
+        <b style="color:var(--teal);font-family:monospace">${esc(c.target)} = ${fmt(c.value)}</b></div>
+      <div class="small muted">inputs: ${c.inputs.map(z=>esc(z.name)+'='+fmt(z.val)+' <span style="opacity:.6">['+esc(z.src)+']</span>').join(' · ')}</div>
+      ${c.warn.length?`<div class="small warn">⚠ extrapolating: ${c.warn.map(esc).join(', ')} outside trained range — value unreliable</div>`:''}
+    </div>`;}).join('');
+  if(remaining.length)
+    h+='<div class="caveat" style="margin:10px 0 0">⚠ Not evaluated: <b>'+remaining.map(n=>esc(n.label)).join(', ')+
+       '</b> — a required upstream output is missing, or chained components form a loop. No value was guessed.</div>';
+  $('scenarioResults').innerHTML=h||'<span class="muted small">No results.</span>';
+}
+
+/* =========================================================================
+   SELECTORS + PERSISTENCE + UTILS
+   ========================================================================= */
+function refreshSelectors(){
+  fillCompSelect('paramSelect');
+  fillCompSelect('dataComp');
+  fillCompSelect('trainComp');
+  fillCompSelect('predComp', true);
+  fillBessSelect();
+  buildScenarioPanel();
+  if($('v-params').classList.contains('active')) renderParamEditor();
+  if($('v-train').classList.contains('active')) syncTrainCols();
+  if($('v-predict').classList.contains('active')) renderPredInputs();
+  if($('v-bess').classList.contains('active')) bessRenderPanel();
+}
+function fillBessSelect(){
+  const sel=$('bessComp'); if(!sel)return; const prev=sel.value;
+  const list=bessNodes();
+  sel.innerHTML=list.map(n=>`<option value="${n.id}">${esc(n.label)} (${n.type})${n.data?' · data ✓':''}</option>`).join('')
+    || '<option value="">— no BESS / UPS component yet —</option>';
+  if([...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+function fillCompSelect(id,trainedOnly){
+  const s=$(id); if(!s)return; const prev=s.value;
+  const list=state.nodes.filter(n=>!trainedOnly||n.model);
+  s.innerHTML=list.map(n=>`<option value="${n.id}">${esc(n.label)} (${n.type})${n.model?' ✓':''}</option>`).join('')
+    || '<option value="">— none —</option>';
+  if([...s.options].some(o=>o.value===prev))s.value=prev;
+}
+function syncTrainCols(){
+  const n=find($('trainComp').value);
+  const tc=$('targetCol'), fl=$('featList');
+  if(!n||!n.data){tc.innerHTML='<option value="">— upload data first (tab 3) —</option>';fl.innerHTML='<span class="muted small">No data.</span>';
+    if($('trainDataSrc'))$('trainDataSrc').innerHTML='';return;}
+  ensureDatasets(n);
+  const numeric=numericCols(n);
+  if(!Array.isArray(n.selFeats))n.selFeats=[];
+  tc.innerHTML=numeric.map(h=>`<option ${h===n.selTarget?'selected':''}>${esc(h)}</option>`).join('');
+  if(!n.selTarget&&numeric.length)n.selTarget=tc.value;
+  fl.innerHTML=numeric.map(h=>`<label><input type="checkbox" class="featchk" value="${esc(h)}" ${n.selFeats.includes(h)?'checked':''}>${esc(h)}</label>`).join('');
+  // keep the two tabs in sync: writing back to the node
+  tc.onchange=()=>{n.selTarget=tc.value;updateTrainDsInfo(n);};
+  fl.querySelectorAll('.featchk').forEach(cb=>cb.addEventListener('change',()=>{
+    n.selFeats=[...fl.querySelectorAll('.featchk:checked')].map(x=>x.value);
+    updateTrainDsInfo(n);
+  }));
+  renderTrainDataSrc(n);
+}
+/* ---- training-data source picker: what to do when several datasets are attached ---- */
+function renderTrainDataSrc(n){
+  const box=$('trainDataSrc'); if(!box)return;
+  if(!n||!n.datasets||!n.datasets.length){box.innerHTML='';return;}
+  const ds=n.datasets, opt=n.trainOpts;
+  if(ds.length===1){
+    box.innerHTML='<div class="hint">1 dataset attached: <b>'+esc(ds[0].label||ds[0].file)+'</b> ('+ds[0].rows.length+' rows).</div>';
+    return;
+  }
+  box.innerHTML=`
+    <label class="fld">Training data source — ${ds.length} datasets attached (e.g. season-wise golden datasets)</label>
+    <select id="trainStrategy">
+      <option value="active" ${opt.strategy==='active'?'selected':''}>Use active dataset only (${esc((n.data&&(n.data.label||n.data.file))||'—')})</option>
+      <option value="all" ${opt.strategy==='all'?'selected':''}>Merge ALL datasets</option>
+      <option value="select" ${opt.strategy==='select'?'selected':''}>Merge selected datasets…</option>
+      <option value="weighted" ${opt.strategy==='weighted'?'selected':''}>Weighted merge (favor chosen season(s))</option>
+    </select>
+    <div id="trainDsPick" style="margin-top:8px"></div>
+    <div class="hint" id="trainDsInfo" style="margin-top:4px"></div>`;
+  $('trainStrategy').onchange=()=>{ opt.strategy=$('trainStrategy').value; renderTrainDsPick(n); updateTrainDsInfo(n); };
+  renderTrainDsPick(n); updateTrainDsInfo(n);
+}
+function renderTrainDsPick(n){
+  const box=$('trainDsPick'); if(!box)return;
+  const opt=n.trainOpts;
+  if(opt.strategy==='select'){
+    box.innerHTML=n.datasets.map(d=>`<label style="display:block;margin:2px 0">
+      <input type="checkbox" class="trainDsChk" value="${d.id}" ${opt.dsIds.includes(d.id)?'checked':''}>
+      ${esc(d.label||d.file)} <span class="muted small">(${d.rows.length} rows${d.season?', '+esc(d.season):''})</span></label>`).join('');
+    box.querySelectorAll('.trainDsChk').forEach(cb=>cb.addEventListener('change',()=>{
+      opt.dsIds=[...box.querySelectorAll('.trainDsChk:checked')].map(x=>x.value); updateTrainDsInfo(n);
+    }));
+  } else if(opt.strategy==='weighted'){
+    box.innerHTML=n.datasets.map(d=>`<div class="row" style="margin:2px 0;align-items:center">
+      <input type="checkbox" class="trainDsChk" value="${d.id}" ${opt.dsIds.includes(d.id)?'checked':''}>
+      <span style="flex:1">${esc(d.label||d.file)} <span class="muted small">(${d.rows.length} rows)</span></span>
+      <label class="small muted" style="margin:0">weight</label>
+      <input type="number" class="trainDsW" data-id="${d.id}" value="${opt.weights[d.id]||1}" min="1" max="10" style="max-width:64px">
+    </div>`).join('');
+    box.querySelectorAll('.trainDsChk').forEach(cb=>cb.addEventListener('change',()=>{
+      opt.dsIds=[...box.querySelectorAll('.trainDsChk:checked')].map(x=>x.value); updateTrainDsInfo(n);
+    }));
+    box.querySelectorAll('.trainDsW').forEach(inp=>inp.addEventListener('change',()=>{
+      opt.weights[inp.dataset.id]=Math.max(1,parseInt(inp.value)||1); updateTrainDsInfo(n);
+    }));
+  } else { box.innerHTML=''; }
+}
+function updateTrainDsInfo(n){
+  const el=$('trainDsInfo'); if(!el||!n)return;
+  const opt=n.trainOpts, target=$('targetCol')?$('targetCol').value:n.selTarget;
+  const feats=[...document.querySelectorAll('.featchk:checked')].map(c=>c.value);
+  if(!target||!feats.length){el.textContent='Pick target + features above to preview row counts.';return;}
+  try{
+    const {X,dropped,perDs}=buildMergedMatrix(n,feats,target,opt);
+    el.innerHTML='Will train on <b>'+X.length+'</b> row(s)'+(dropped?' ('+dropped+' dropped — non-numeric/blank)':'')+
+      '<br>'+perDs.map(p=>esc(p.ds.label||p.ds.file)+': '+(p.skippedCols?'<span class="warn">missing target/feature column</span>':
+        p.used+' row(s)'+(p.weight&&p.weight>1?' × weight '+p.weight:''))).join(' · ');
+  }catch(e){ el.textContent=''; }
+}
+function saveConfig(){
+  // Drop live TensorFlow.js models — they can't be JSON-serialized (retrain after load).
+  const blob=new Blob([JSON.stringify(state,(k,v)=>k==='tfModel'?undefined:v,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='plant_twin_config.json';a.click();
+}
+function loadConfig(input){
+  const f=input.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const s=JSON.parse(rd.result);
+    state=Object.assign({nodes:[],wires:[],sel:null,connectFrom:null,connectMode:false},s);
+    state.connectMode=false;state.connectFrom=null;
+    let mx=1;state.nodes.forEach(n=>{const num=+String(n.id).replace(/\D/g,'');if(num>=mx)mx=num+1;});uid=mx;
+    // A saved NN has no restorable weights — clear it so it isn't shown as usable.
+    state.nodes.forEach(n=>{ if(n.model&&n.model.model&&n.model.model.kind==='tfnn'){ n.model=null; n.lastPred=null; } });
+    renderDiagram();refreshSelectors();renderNodeList();
+    alert('Config loaded: '+state.nodes.length+' components.');
+  }catch(e){alert('Invalid config file: '+e.message);}};
+  rd.readAsText(f);
+}
+function find(id){return state.nodes.find(n=>n.id===id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmt(v){if(!isFinite(v))return '—';const a=Math.abs(v);
+  if(a!==0&&(a<0.01||a>=1e6))return v.toExponential(2);
+  return (Math.round(v*1000)/1000).toLocaleString();}
+
+/* =========================================================================
+   BESS / UPS MONITORING MODULE
+   Data-driven battery condition monitoring. Same philosophy as the rest of
+   this tool: every figure traces back to a column the user mapped. Anything
+   whose input is missing is reported as "not computed", never guessed.
+   ========================================================================= */
+const BESS_TYPES=["BESS","PCS","Battery Rack","UPS","BMS"];
+
+/* Signals the module understands. rx = auto-suggestion only; user confirms. */
+const BSIG=[
+ {k:'t',   n:'Timestamp',                  u:'',    rx:/(time|date|stamp)/i,
+  ex:['t','ts','time','timestamp','datetime','date','dt','logtime','sampletime']},
+ {k:'p',   n:'Battery power',              u:'kW',  rx:/^(?!.*(aux|hvac|irrad)).*(power|kw|\bp\b)/i,
+  ex:['p','kw','pkw','power','powerkw','pdc','pbat','pbess','batterypower','activepower']},
+ {k:'i',   n:'String / DC current',        u:'A',   rx:/(current|amp|\bidc\b|\bi_dc\b)/i,
+  ex:['i','a','amp','amps','ia','current','currenta','idc','ibat','ibess','stringcurrent','dccurrent']},
+ {k:'v',   n:'String / DC bus voltage',    u:'V',   rx:/^(?!.*cell).*(volt|vdc|v_dc|bus)/i,
+  ex:['v','vv','vdc','volt','volts','voltage','voltagev','vbus','vbat','vbess','vstring','stringvoltage','dcvoltage','busvoltage']},
+ {k:'soc', n:'State of charge',            u:'%',   rx:/(soc|state.?of.?charge)/i,
+  ex:['soc','socpct','soc%','stateofcharge','socpercent']},
+ {k:'vmx', n:'Cell voltage MAX',           u:'V',   rx:/(cell.*max|max.*cell|vcell.*max|vmax)/i,
+  ex:['vmax','vcellmax','cellvmax','cellvoltagemax','maxcellvoltage','ucellmax','vcellhigh']},
+ {k:'vmn', n:'Cell voltage MIN',           u:'V',   rx:/(cell.*min|min.*cell|vcell.*min|vmin)/i,
+  ex:['vmin','vcellmin','cellvmin','cellvoltagemin','mincellvoltage','ucellmin','vcelllow']},
+ {k:'tmx', n:'Cell / module temp MAX',     u:'°C',  rx:/^(?!.*amb).*(temp.*max|max.*temp|tmax)/i,
+  ex:['tmax','tempmax','temperaturemax','celltempmax','maxcelltemp','tcellmax','modtempmax']},
+ {k:'tmn', n:'Cell / module temp MIN',     u:'°C',  rx:/^(?!.*amb).*(temp.*min|min.*temp|tmin)/i,
+  ex:['tmin','tempmin','temperaturemin','celltempmin','mincelltemp','tcellmin','modtempmin']},
+ {k:'tam', n:'Ambient / room temp',        u:'°C',  rx:/(ambient|amb.?temp|room.?temp)/i,
+  ex:['tamb','tambient','ambient','ambienttemp','ambienttemperature','roomtemp','roomtemperature']},
+ {k:'aux', n:'Aux / HVAC power',           u:'kW',  rx:/(aux|hvac|parasit|house.?load|cooling)/i,
+  ex:['aux','auxkw','auxpower','hvac','hvackw','hvacpower','coolingpower','houseload','parasitic']}
+];
+/* more specific signals are matched first so a generic pattern cannot steal their column */
+const BGUESS_ORDER=['t','soc','vmx','vmn','tmx','tmn','tam','aux','i','v','p'];
+function bessNorm(h){return String(h).toLowerCase().replace(/[^a-z0-9%]/g,'');}
+
+let BR=null;               // last analysis result (kept out of state → configs stay small)
+
+function bessNodes(){ return state.nodes.filter(n=>BESS_TYPES.includes(n.type)); }
+function bessQuickAdd(type){
+  const n=addNode(type, type+'-'+(state.nodes.filter(z=>z.type===type).length+1), 190, 330);
+  refreshSelectors(); $('bessComp').value=n.id; bessRenderPanel();
+}
+function bessEnsure(n){
+  if(!n.bess) n.bess={map:{},cfg:{}};
+  if(!n.bess.map) n.bess.map={};
+  if(!n.bess.cfg) n.bess.cfg={};
+  const d={sign:'dis+', meas:'dc', interval:15, dateOrder:'auto',
+           eRated:'', pRated:'', dvLim:50, tHi:45, dtLim:8, socLo:10, socHi:95,
+           refFrac:0.30, ewmaLam:0.10, upsLoad:''};
+  for(const k in d) if(n.bess.cfg[k]===undefined) n.bess.cfg[k]=d[k];
+  return n.bess;
+}
+function bessGuessMap(n){
+  const used=new Set(Object.values(n.bess.map).filter(Boolean));
+  const heads=n.data.headers;
+  const claim=(k,test)=>{
+    if(n.bess.map[k])return;
+    const h=heads.find(h=>!used.has(h)&&test(h));
+    if(h){ n.bess.map[k]=h; used.add(h); }
+  };
+  // pass 1 — exact column names (handles terse SCADA headers like "V", "I", "t")
+  BGUESS_ORDER.forEach(k=>{ const s=BSIG.find(z=>z.k===k);
+    claim(k,h=>s.ex.includes(bessNorm(h))); });
+  // pass 2 — looser pattern match on descriptive headers
+  BGUESS_ORDER.forEach(k=>{ const s=BSIG.find(z=>z.k===k);
+    claim(k,h=>s.rx.test(h)); });
+}
+
+/* ---------------- panel (mapping + settings) ---------------- */
+function bessRenderPanel(){
+  const box=$('bessPanel'), msg=$('bessCompMsg'), out=$('bessOut');
+  const n=find($('bessComp').value);
+  if(!n){ box.innerHTML='<span class="muted small">No battery component in the plant yet. Add a <b>BESS</b> or <b>UPS</b> block above (it also appears on the single-line diagram in tab 1).</span>';
+    msg.textContent=''; out.innerHTML=''; return; }
+  if(!n.data){ box.innerHTML='<div class="caveat" style="margin:0">No data attached to <b>'+esc(n.label)+
+      '</b>. Go to <b>tab 3 · Training Data</b>, pick this component in the dropdown and upload its BMS / SCADA export (.csv or .xlsx). Then come back here.</div>';
+    msg.textContent=''; out.innerHTML=''; return; }
+
+  const b=bessEnsure(n); bessGuessMap(n);
+  msg.innerHTML='<span class="ok">'+esc(n.data.file||'data')+' · '+n.data.rows.length+' rows</span>';
+  const opts=h=>'<option value="">— not mapped —</option>'+
+    n.data.headers.map(c=>`<option ${c===h?'selected':''}>${esc(c)}</option>`).join('');
+
+  box.innerHTML=`
+    <h3 style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px">Signal mapping <span class="muted" style="text-transform:none;letter-spacing:0">— auto-suggested from column names, please confirm each one</span></h3>
+    <div class="mapgrid">
+      ${BSIG.map(s=>`<div>
+        <label class="fld">${esc(s.n)}${s.u?' <span style="text-transform:none">('+s.u+')</span>':''}</label>
+        <select class="bmap" data-k="${s.k}">${opts(b.map[s.k]||'')}</select>
+      </div>`).join('')}
+    </div>
+    <hr>
+    <h3 style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px">Conventions &amp; nameplate</h3>
+    <div class="mapgrid">
+      <div><label class="fld">Sign convention</label>
+        <select class="bcfg" data-k="sign">
+          <option value="dis+" ${b.cfg.sign==='dis+'?'selected':''}>positive = discharge</option>
+          <option value="chg+" ${b.cfg.sign==='chg+'?'selected':''}>positive = charge</option>
+        </select></div>
+      <div><label class="fld">Power measured at</label>
+        <select class="bcfg" data-k="meas">
+          <option value="dc" ${b.cfg.meas==='dc'?'selected':''}>DC — battery terminals</option>
+          <option value="ac" ${b.cfg.meas==='ac'?'selected':''}>AC — PCS / inverter terminals</option>
+        </select></div>
+      <div><label class="fld">Date order (if ambiguous)</label>
+        <select class="bcfg" data-k="dateOrder">
+          <option value="auto" ${b.cfg.dateOrder==='auto'?'selected':''}>auto-detect</option>
+          <option value="dmy"  ${b.cfg.dateOrder==='dmy'?'selected':''}>DD-MM-YYYY</option>
+          <option value="mdy"  ${b.cfg.dateOrder==='mdy'?'selected':''}>MM-DD-YYYY</option>
+        </select></div>
+      <div><label class="fld">Interval if no timestamp (min)</label>
+        <input type="number" class="bcfg" data-k="interval" value="${esc(b.cfg.interval)}" min="1"></div>
+      <div><label class="fld">Rated energy (kWh)</label>
+        <input type="number" class="bcfg" data-k="eRated" value="${esc(b.cfg.eRated)}" placeholder="blank → cycle KPIs skipped"></div>
+      <div><label class="fld">Rated power (kW)</label>
+        <input type="number" class="bcfg" data-k="pRated" value="${esc(b.cfg.pRated)}" placeholder="blank → C-rate KPIs skipped"></div>
+    </div>
+    <h3 style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px;margin-top:14px">Alarm limits <span class="muted" style="text-transform:none;letter-spacing:0">— these are editable placeholders, not standards. Set them to your OEM / BMS values.</span></h3>
+    <div class="mapgrid">
+      <div><label class="fld">Cell ΔV limit (mV)</label>
+        <input type="number" class="bcfg" data-k="dvLim" value="${esc(b.cfg.dvLim)}"></div>
+      <div><label class="fld">Cell temp high limit (°C)</label>
+        <input type="number" class="bcfg" data-k="tHi" value="${esc(b.cfg.tHi)}"></div>
+      <div><label class="fld">Module ΔT limit (°C)</label>
+        <input type="number" class="bcfg" data-k="dtLim" value="${esc(b.cfg.dtLim)}"></div>
+      <div><label class="fld">SoC low / high band (%)</label>
+        <div class="row"><input type="number" class="bcfg" data-k="socLo" value="${esc(b.cfg.socLo)}" style="flex:1">
+        <input type="number" class="bcfg" data-k="socHi" value="${esc(b.cfg.socHi)}" style="flex:1"></div></div>
+      <div><label class="fld">Reference window for drift model (fraction)</label>
+        <input type="number" class="bcfg" data-k="refFrac" value="${esc(b.cfg.refFrac)}" step="0.05" min="0.1" max="0.8"></div>
+      <div><label class="fld">EWMA λ (drift chart)</label>
+        <input type="number" class="bcfg" data-k="ewmaLam" value="${esc(b.cfg.ewmaLam)}" step="0.05" min="0.02" max="1"></div>
+      ${n.type==='UPS'?`<div><label class="fld">UPS load for autonomy estimate (kW)</label>
+        <input type="number" class="bcfg" data-k="upsLoad" value="${esc(b.cfg.upsLoad)}" placeholder="blank → autonomy skipped"></div>`:''}
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" onclick="bessAnalyse()">▶ Analyse battery</button>
+      <button onclick="bessWriteParams()">↳ Write KPIs into component parameters</button>
+    </div>`;
+
+  box.querySelectorAll('.bmap').forEach(s=>s.onchange=()=>{ b.map[s.dataset.k]=s.value; });
+  box.querySelectorAll('.bcfg').forEach(s=>s.onchange=()=>{
+    const v=s.value; b.cfg[s.dataset.k]= (s.tagName==='SELECT')? v : (v===''?'':Number(v));
+  });
+}
+
+/* ---------------- time parsing ---------------- */
+function bessDetectOrder(vals){
+  let dmy=0,mdy=0,slash=0;
+  for(const s of vals){
+    const m=String(s).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if(!m)continue; slash++;
+    if(+m[1]>12)dmy++; else if(+m[2]>12)mdy++;
+  }
+  if(!slash) return {order:'iso',ambiguous:false};
+  if(dmy&&!mdy) return {order:'dmy',ambiguous:false};
+  if(mdy&&!dmy) return {order:'mdy',ambiguous:false};
+  return {order:'dmy',ambiguous:true};      // flagged loudly in the readiness ledger
+}
+function bessParseTime(raw,order){
+  if(raw==null)return null;
+  const s=String(raw).trim(); if(s==='')return null;
+  if(/^\d+(\.\d+)?$/.test(s)){                       // Excel serial date
+    const num=Number(s);
+    if(num>20000&&num<80000) return Math.round((num-25569)*86400000);
+    return null;                                      // bare number, not a plausible date → refuse
+  }
+  const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m&&order!=='iso'){
+    let a=+m[1],b=+m[2],y=+m[3]; if(y<100)y+=2000;
+    const d = order==='mdy'? b : a, mo = order==='mdy'? a : b;
+    const dt=new Date(y,mo-1,d,+(m[4]||0),+(m[5]||0),+(m[6]||0));
+    if(isFinite(dt.getTime())) return dt.getTime();
+  }
+  let t=Date.parse(s.replace(' ','T')); if(isFinite(t))return t;
+  t=Date.parse(s);                        if(isFinite(t))return t;
+  return null;
+}
+
+/* ---------------- small numeric helpers ---------------- */
+function bPct(arr,q){ if(!arr.length)return null; const a=[...arr].sort((x,y)=>x-y);
+  const i=(a.length-1)*q, lo=Math.floor(i), hi=Math.ceil(i);
+  return lo===hi? a[lo] : a[lo]+(a[hi]-a[lo])*(i-lo); }
+function bMean(a){ return a.length? a.reduce((x,y)=>x+y,0)/a.length : null; }
+function bStd(a){ if(a.length<2)return 0; const m=bMean(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)); }
+function bLinFit(xs,ys){
+  const n=xs.length; if(n<3)return null;
+  const mx=bMean(xs),my=bMean(ys);
+  let sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){sxy+=(xs[i]-mx)*(ys[i]-my);sxx+=(xs[i]-mx)**2;syy+=(ys[i]-my)**2;}
+  if(sxx===0)return null;
+  const m=sxy/sxx, c=my-m*mx;
+  return {m,c,r2: syy>0? (sxy*sxy)/(sxx*syy) : 0, n};
+}
+function bSolve(A,b){
+  const D=b.length, M=A.map((r,i)=>r.concat([b[i]]));
+  for(let c=0;c<D;c++){
+    let p=c; for(let r=c+1;r<D;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    if(Math.abs(M[p][c])<1e-12) return null;
+    [M[c],M[p]]=[M[p],M[c]];
+    for(let r=0;r<D;r++){ if(r===c)continue; const f=M[r][c]/M[c][c];
+      for(let k=c;k<=D;k++) M[r][k]-=f*M[c][k]; }
+  }
+  return M.map((row,i)=>row[D]/M[i][i]);
+}
+function bRidge(X,y,lam){          // closed-form ridge with intercept (intercept unpenalised)
+  const n=X.length, m=X[0].length, D=m+1;
+  const A=Array.from({length:D},()=>Array(D).fill(0)), b=Array(D).fill(0);
+  for(let i=0;i<n;i++){ const xi=X[i].concat([1]);
+    for(let a=0;a<D;a++){ b[a]+=xi[a]*y[i]; for(let c=0;c<D;c++) A[a][c]+=xi[a]*xi[c]; } }
+  for(let a=0;a<m;a++) A[a][a]+=lam*n;
+  return bSolve(A,b);
+}
+
+/* ---------------- core analysis ---------------- */
+function bessAnalyse(){
+  const n=find($('bessComp').value); if(!n||!n.data)return;
+  const b=bessEnsure(n), map=b.map, cfg=b.cfg, H=n.data.headers;
+  const notes=[];                                   // honest running commentary
+  const col=k=>map[k]? H.indexOf(map[k]) : -1;
+  const num=(r,j)=>{ if(j<0)return null; const v=Number(String(r[j]).trim()); return isFinite(v)?v:null; };
+
+  /* --- time base --- */
+  const tj=col('t');
+  let order=cfg.dateOrder, ambiguous=false;
+  if(tj>=0&&order==='auto'){ const d=bessDetectOrder(n.data.rows.slice(0,400).map(r=>r[tj])); order=d.order; ambiguous=d.ambiguous; }
+  let rows=n.data.rows.map((r,i)=>({
+    i, t: tj>=0? bessParseTime(r[tj],order) : null,
+    p:num(r,col('p')), i_:num(r,col('i')), v:num(r,col('v')), soc:num(r,col('soc')),
+    vmx:num(r,col('vmx')), vmn:num(r,col('vmn')), tmx:num(r,col('tmx')), tmn:num(r,col('tmn')),
+    tam:num(r,col('tam')), aux:num(r,col('aux'))
+  }));
+  let timeReal=false, badT=0;
+  if(tj>=0){
+    badT=rows.filter(r=>r.t==null).length;
+    rows=rows.filter(r=>r.t!=null).sort((a,c)=>a.t-c.t);
+    timeReal=rows.length>1;
+    if(badT) notes.push(`${badT} row(s) had an unreadable timestamp and were dropped.`);
+    if(ambiguous) notes.push('⚠ The date column is ambiguous (all day/month values ≤ 12). <b>DD-MM-YYYY</b> was assumed — if that is wrong, set the date order explicitly above and re-run.');
+  }
+  if(!timeReal){
+    const dt=(Number(cfg.interval)||15)*60000;
+    rows.forEach((r,k)=>r.t=k*dt);
+    notes.push(`No usable timestamp column — a fixed ${(Number(cfg.interval)||15)} min interval was assumed for every row. Energy and cycle figures are only as good as that assumption.`);
+  }
+  if(rows.length<5){ $('bessOut').innerHTML='<div class="caveat" style="margin:0">Only '+rows.length+' usable row(s) — not enough to analyse.</div>'; return; }
+
+  /* --- sign convention → positive = discharge everywhere below --- */
+  const sgn = cfg.sign==='chg+' ? -1 : 1;
+  rows.forEach(r=>{ if(r.p!=null)r.p*=sgn; if(r.i_!=null)r.i_*=sgn; });
+  /* derive power from V·I if power itself is not mapped */
+  let pDerived=false;
+  if(col('p')<0 && col('v')>=0 && col('i')>=0){
+    rows.forEach(r=>{ r.p = (r.v!=null&&r.i_!=null)? r.v*r.i_/1000 : null; });
+    pDerived=true; notes.push('Battery power was not mapped — it was computed as V×I/1000 from the mapped voltage and current columns (DC side).');
+  }
+
+  /* --- dt per sample, gap detection --- */
+  const dts=[]; for(let k=1;k<rows.length;k++) dts.push((rows[k].t-rows[k-1].t)/3600000);
+  const medDt=bPct(dts.filter(d=>d>0),0.5)||0.25;
+  let gapH=0, gaps=0;
+  rows.forEach((r,k)=>{
+    let d = k<rows.length-1 ? (rows[k+1].t-rows[k].t)/3600000 : medDt;
+    if(d<=0){ d=0; }
+    if(d>3*medDt){ gapH+=d; gaps++; d=0; }            // gap: not integrated, counted separately
+    r.dt=d;
+  });
+  const spanH=(rows.at(-1).t-rows[0].t)/3600000;
+  const covered=spanH>0? Math.max(0,1-gapH/spanH) : 1;
+
+  /* --- energy / efficiency --- */
+  let Edis=0,Echg=0,Eaux=0,pAbsMax=0;
+  rows.forEach(r=>{ if(r.p==null)return;
+    if(r.p>0)Edis+=r.p*r.dt; else Echg+= -r.p*r.dt;
+    if(Math.abs(r.p)>pAbsMax)pAbsMax=Math.abs(r.p);
+    if(r.aux!=null)Eaux+=Math.abs(r.aux)*r.dt; });
+  const hasP = rows.some(r=>r.p!=null);
+  const socArr=rows.map(r=>r.soc).filter(v=>v!=null);
+  const socStart=rows.find(r=>r.soc!=null)?.soc ?? null;
+  const socEnd=[...rows].reverse().find(r=>r.soc!=null)?.soc ?? null;
+  const eRated=Number(cfg.eRated)||null, pRated=Number(cfg.pRated)||null;
+  const rteRaw = (hasP&&Echg>0)? Edis/Echg : null;
+  let rteAdj=null, socDrift=null;
+  if(socStart!=null&&socEnd!=null){ socDrift=socEnd-socStart;
+    if(rteRaw!=null&&eRated){ const stored=socDrift/100*eRated; const denom=Echg-stored;
+      if(denom>0) rteAdj=Edis/denom; } }
+
+  /* --- cycles --- */
+  const efcEnergy = (eRated&&hasP)? (Edis+Echg)/(2*eRated) : null;
+  /* SoC half-cycle counting with hysteresis */
+  let efcSoc=null, swings=[];
+  if(socArr.length>10){
+    const hyst=2;                                   // % SoC that must be reversed to call a turning point
+    const pts=rows.filter(r=>r.soc!=null);
+    const tp=[pts[0]]; let dir=0, ext=pts[0];
+    for(const r of pts){
+      if(dir===0){
+        if(Math.abs(r.soc-ext.soc)>=hyst){ dir=Math.sign(r.soc-ext.soc); ext=r; }
+      } else if(Math.sign(r.soc-ext.soc)===dir){ ext=r; }
+      else if(Math.abs(r.soc-ext.soc)>=hyst){ tp.push(ext); dir=-dir; ext=r; }
+    }
+    tp.push(pts.at(-1));
+    for(let k=1;k<tp.length;k++){
+      const amp=Math.abs(tp[k].soc-tp[k-1].soc);
+      if(amp>=hyst) swings.push({a:tp[k-1],b:tp[k],amp,dis:tp[k].soc<tp[k-1].soc});
+    }
+    if(swings.length) efcSoc=swings.reduce((s,w)=>s+w.amp,0)/200;
+  }
+
+  /* --- capacity proxy from deep discharge swings (energy per %SoC × 100) --- */
+  const capPts=[];
+  if(hasP&&swings.length){
+    swings.filter(w=>w.dis&&w.amp>=20).forEach(w=>{
+      let e=0; rows.forEach(r=>{ if(r.t>=w.a.t&&r.t<=w.b.t&&r.p!=null&&r.p>0) e+=r.p*r.dt; });
+      if(e>0) capPts.push({t:w.b.t, cap:e/w.amp*100, amp:w.amp});
+    });
+  }
+  const capFit = capPts.length>=4? bLinFit(capPts.map(p=>p.t/86400000),capPts.map(p=>p.cap)) : null;
+
+  /* --- imbalance / thermal --- */
+  const dv=[], dvSeries=[];
+  rows.forEach(r=>{ if(r.vmx!=null&&r.vmn!=null){ const d=(r.vmx-r.vmn)*1000; dv.push(d); dvSeries.push([r.t,d]); } });
+  const dT=[], dTSeries=[];
+  rows.forEach(r=>{ if(r.tmx!=null&&r.tmn!=null){ const d=r.tmx-r.tmn; dT.push(d); dTSeries.push([r.t,d]); } });
+  const tmxArr=rows.map(r=>r.tmx).filter(v=>v!=null);
+  const dvLim=Number(cfg.dvLim)||null, tHi=Number(cfg.tHi)||null, dtLim=Number(cfg.dtLim)||null;
+
+  /* --- resistance from current steps (opportunistic, NOT a pulse test) --- */
+  const rPts=[]; let rDropNeg=0, rDropSoc=0, rSteps=0, iThr=null;
+  if(col('i')>=0&&col('v')>=0){
+    const iAll=rows.map(r=>r.i_).filter(v=>v!=null).map(Math.abs);
+    iThr=Math.max(1,0.10*(bPct(iAll,0.98)||10));        // a "step" = 10% of the 98th-pct current
+    for(let k=1;k<rows.length;k++){
+      const a=rows[k-1],c=rows[k];
+      if(a.i_==null||c.i_==null||a.v==null||c.v==null)continue;
+      if((c.t-a.t)/3600000 > 1.6*medDt) continue;       // don't step across a logging gap
+      const dI=c.i_-a.i_; if(Math.abs(dI)<iThr)continue;
+      rSteps++;
+      // If SoC moved appreciably between the two samples, the open-circuit voltage moved too
+      // and ΔV is no longer attributable to current alone — reject rather than report a wrong R.
+      if(a.soc!=null&&c.soc!=null&&Math.abs(c.soc-a.soc)>1.5){ rDropSoc++; continue; }
+      const R=-(c.v-a.v)/dI*1000;                       // mΩ, discharge-positive convention
+      if(R>0&&isFinite(R)) rPts.push({t:c.t,R}); else rDropNeg++;
+    }
+  }
+  const rMed = rPts.length? bPct(rPts.map(p=>p.R),0.5) : null;
+  const rFit = rPts.length>=8? bLinFit(rPts.map(p=>p.t/86400000),rPts.map(p=>p.R)) : null;
+
+  /* --- data-driven drift model: ridge V = f(I, SoC, T) + EWMA/CUSUM control chart --- */
+  let drift=null;
+  if(col('v')>=0){
+    const featKeys=[]; if(col('i')>=0)featKeys.push('i_'); if(col('soc')>=0)featKeys.push('soc'); if(col('tmx')>=0)featKeys.push('tmx');
+    if(featKeys.length){
+      const clean=rows.filter(r=>r.v!=null&&featKeys.every(k=>r[k]!=null));
+      if(clean.length>=60){
+        const nRef=Math.max(30,Math.floor(clean.length*(Number(cfg.refFrac)||0.3)));
+        const ref=clean.slice(0,nRef);
+        const X=ref.map(r=>featKeys.map(k=>r[k])), y=ref.map(r=>r.v);
+        const mu=X[0].map((_,j)=>bMean(X.map(r=>r[j])));
+        const sd=X[0].map((_,j)=>bStd(X.map(r=>r[j]))||1);
+        const Z=X.map(r=>r.map((v,j)=>(v-mu[j])/sd[j]));
+        const w=bRidge(Z,y,1e-3);
+        if(w){
+          const pred=r=>{ let o=w[featKeys.length]; featKeys.forEach((k,j)=>o+=w[j]*((r[k]-mu[j])/sd[j])); return o; };
+          const res=clean.map(r=>({t:r.t, e:r.v-pred(r)}));
+          const refRes=res.slice(0,nRef).map(z=>z.e);
+          const s=bStd(refRes)||1e-9, mR=bMean(refRes);
+          const lam=Number(cfg.ewmaLam)||0.1;
+          const sEw=s*Math.sqrt(lam/(2-lam)), L=3;
+          let z=mR, cP=0, cM=0; const k=0.5*s, h=5*s;
+          const ew=[], al=[];
+          res.forEach(p=>{ z=lam*p.e+(1-lam)*z; ew.push([p.t,z]);
+            cP=Math.max(0,cP+(p.e-mR)-k); cM=Math.max(0,cM-(p.e-mR)-k);
+            if(Math.abs(z-mR)>L*sEw||cP>h||cM>h) al.push(p.t); });
+          const refR2=(()=>{ const yv=ref.map(r=>r.v), py=ref.map(pred); const mn=bMean(yv);
+            let ssr=0,sst=0; yv.forEach((v,j)=>{ssr+=(v-py[j])**2;sst+=(v-mn)**2;}); return sst>0?1-ssr/sst:0; })();
+          drift={featKeys,nRef,n:clean.length,sigma:s,mu:mR,ucl:mR+L*sEw,lcl:mR-L*sEw,
+                 ew,alarms:al,firstAlarm:al[0]??null,refR2,
+                 endDrift: ew.length? ew.at(-1)[1]-mR : 0};
+        }
+      } else notes.push('Drift model skipped — fewer than 60 rows have voltage plus at least one of current / SoC / temperature.');
+    } else notes.push('Drift model skipped — voltage is mapped but none of current, SoC or temperature is, so there is nothing to model it against.');
+  }
+
+  /* --- UPS-specific --- */
+  let ups=null;
+  if(n.type==='UPS'){
+    const iAll=rows.map(r=>r.i_).filter(v=>v!=null);
+    const floatThr = iAll.length? Math.max(0.5,0.02*(bPct(iAll.map(Math.abs),0.98)||10)) : null;
+    const floatV = (col('v')>=0&&floatThr!=null)? rows.filter(r=>r.i_!=null&&Math.abs(r.i_)<floatThr&&r.v!=null).map(r=>r.v) : [];
+    const pAll=rows.map(r=>r.p).filter(v=>v!=null).map(Math.abs);
+    const disThr = pRated? 0.05*pRated : Math.max(0.05,0.10*(bPct(pAll,0.98)||1));
+    const events=[]; let cur=null;
+    rows.forEach(r=>{ const dis = r.p!=null? r.p>disThr : (r.i_!=null&&floatThr!=null? r.i_>floatThr*5 : false);
+      if(dis){ if(!cur)cur={t0:r.t,e:0,socA:r.soc,socB:r.soc,vmin:r.v}; cur.e+=(r.p??0)*r.dt; cur.t1=r.t; cur.socB=r.soc??cur.socB;
+        if(r.v!=null&&(cur.vmin==null||r.v<cur.vmin))cur.vmin=r.v; }
+      else if(cur){ if((cur.t1-cur.t0)/60000>=2)events.push(cur); cur=null; } });
+    if(cur&&(cur.t1-cur.t0)/60000>=2)events.push(cur);
+    const load=Number(cfg.upsLoad)||null;
+    let autonomy=null, autoBasis=null;
+    if(load){
+      if(events.length){ const best=events.reduce((a,b)=>b.e>a.e?b:a); if(best.e>0){ autonomy=best.e/load*60; autoBasis='largest observed discharge event ('+fmt(best.e)+' kWh delivered)'; } }
+      else if(eRated){ autonomy=eRated/load*60; autoBasis='full rated energy — no real discharge event was found in this data, so nothing was verified'; }
+    }
+    ups={floatV:floatV.length?{mean:bMean(floatV),min:Math.min(...floatV),max:Math.max(...floatV),n:floatV.length}:null,
+         events,autonomy,autoBasis,load,disThr};
+    if(col('i')>=0&&!rows.some(r=>r.i_<0))
+      notes.push('The UPS current column never goes negative, so charge and discharge cannot be told apart by sign. Recharge periods after an outage may therefore be counted as discharge events — check the sign convention setting, or map a signed power column if the UPS logs one.');
+  }
+
+  /* --- event ledger --- */
+  const ev=[];
+  const push=(t,type,txt,cls)=>ev.push({t,type,txt,cls});
+  rows.forEach(r=>{
+    if(dvLim&&r.vmx!=null&&r.vmn!=null&&(r.vmx-r.vmn)*1000>dvLim) push(r.t,'Imbalance','cell ΔV = '+fmt((r.vmx-r.vmn)*1000)+' mV (> '+dvLim+')','bad');
+    if(tHi&&r.tmx!=null&&r.tmx>tHi) push(r.t,'Over-temp','max cell temp = '+fmt(r.tmx)+' °C (> '+tHi+')','bad');
+    if(dtLim&&r.tmx!=null&&r.tmn!=null&&(r.tmx-r.tmn)>dtLim) push(r.t,'Thermal spread','ΔT = '+fmt(r.tmx-r.tmn)+' °C (> '+dtLim+')','warn');
+    if(r.soc!=null&&cfg.socLo!==''&&r.soc<Number(cfg.socLo)) push(r.t,'SoC low','SoC = '+fmt(r.soc)+' %','warn');
+    if(r.soc!=null&&cfg.socHi!==''&&r.soc>Number(cfg.socHi)) push(r.t,'SoC high','SoC = '+fmt(r.soc)+' %','warn');
+  });
+  if(drift) drift.alarms.forEach(t=>push(t,'Voltage drift','terminal voltage deviating from its reference-period behaviour','warn'));
+  ev.sort((a,b)=>a.t-b.t);
+
+  BR={n,rows,timeReal,notes,medDt,spanH,gaps,gapH,covered,
+      Edis,Echg,Eaux,hasP,pAbsMax,pDerived,socArr,socStart,socEnd,socDrift,
+      eRated,pRated,rteRaw,rteAdj,meas:cfg.meas,efcEnergy,efcSoc,swings,
+      capPts,capFit,dv,dvSeries,dT,dTSeries,tmxArr,dvLim,tHi,dtLim,
+      rPts,rMed,rFit,rSteps,rDropNeg,rDropSoc,iThr,drift,ups,ev,map,cfg};
+  bessRender();
+}
+
+/* ---------------- rendering ---------------- */
+function bKpi(lbl,val,sub,cls){
+  return `<div class="kpi ${cls||''}"><div class="lbl">${lbl}</div>
+    <div class="val ${val==null?'na':''}">${val==null?'not computed':val}</div>
+    ${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+}
+function bTime(ms){ if(!BR||!BR.timeReal) return '#'+Math.round(ms/ (BR? (BR.medDt*3600000):9e5));
+  const d=new Date(ms);const p=x=>String(x).padStart(2,'0');
+  return p(d.getDate())+'-'+p(d.getMonth()+1)+'-'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+
+function bChart(id,series,opts){
+  opts=opts||{};
+  const svg=$(id); if(!svg)return; svg.innerHTML='';
+  const W=700,H=190,pl=52,pr=opts.right?52:12,pt=10,pb=24;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const act=series.filter(s=>s.pts&&s.pts.length);
+  if(!act.length){ add(svg,'text',{x:W/2,y:H/2,fill:'#8a97a6','font-size':11,'text-anchor':'middle'},'no data'); return; }
+  const xs=[].concat(...act.map(s=>s.pts.map(p=>p[0])));
+  const x0=Math.min(...xs),x1=Math.max(...xs);
+  const ax=(a)=>act.filter(s=>(s.axis||1)===a);
+  const rng=a=>{const v=[].concat(...ax(a).map(s=>s.pts.map(p=>p[1])));
+    if(!v.length)return null; let lo=Math.min(...v),hi=Math.max(...v);
+    (opts.hl||[]).filter(h=>(h.axis||1)===a).forEach(h=>{lo=Math.min(lo,h.y);hi=Math.max(hi,h.y);});
+    if(hi===lo){hi=lo+1;lo=lo-1;} const pad=(hi-lo)*0.08; return [lo-pad,hi+pad];};
+  const r1=rng(1), r2=rng(2);
+  const X=v=>pl+(x1===x0?0.5:(v-x0)/(x1-x0))*(W-pl-pr);
+  const Y=(v,a)=>{const r=a===2?r2:r1; return H-pb-((v-r[0])/(r[1]-r[0]))*(H-pb-pt);};
+  add(svg,'line',{x1:pl,y1:H-pb,x2:W-pr,y2:H-pb,stroke:'#26323f'});
+  add(svg,'line',{x1:pl,y1:pt,x2:pl,y2:H-pb,stroke:'#26323f'});
+  for(let g=0;g<=4;g++){ const v=r1[0]+(r1[1]-r1[0])*g/4, y=Y(v,1);
+    add(svg,'line',{x1:pl,y1:y,x2:W-pr,y2:y,stroke:'#18222d'});
+    add(svg,'text',{x:pl-5,y:y+3,fill:'#8a97a6','font-size':9,'text-anchor':'end'},fmt(v)); }
+  if(r2) for(let g=0;g<=4;g++){ const v=r2[0]+(r2[1]-r2[0])*g/4, y=Y(v,2);
+    add(svg,'text',{x:W-pr+5,y:y+3,fill:'#8a97a6','font-size':9},fmt(v)); }
+  [0,0.5,1].forEach(f=>{ const v=x0+(x1-x0)*f;
+    add(svg,'text',{x:X(v),y:H-8,fill:'#8a97a6','font-size':9,'text-anchor':f===0?'start':f===1?'end':'middle'},bTime(v)); });
+  (opts.hl||[]).forEach(h=>add(svg,'line',{x1:pl,y1:Y(h.y,h.axis||1),x2:W-pr,y2:Y(h.y,h.axis||1),
+    stroke:h.col||'#ff5c5c','stroke-width':1,'stroke-dasharray':'4 4'}));
+  act.forEach(s=>{
+    let pts=s.pts; if(pts.length>1400){const st=Math.ceil(pts.length/1400);pts=pts.filter((_,i)=>i%st===0);}
+    if(s.dots){ pts.forEach(p=>add(svg,'circle',{cx:X(p[0]),cy:Y(p[1],s.axis||1),r:2.2,fill:s.col,opacity:.75})); }
+    else { let d=''; pts.forEach(p=>{d+=(d?'L':'M')+X(p[0]).toFixed(1)+','+Y(p[1],s.axis||1).toFixed(1);});
+      add(svg,'path',{d,stroke:s.col,fill:'none','stroke-width':s.w||1.4,'stroke-dasharray':s.dash||''}); }
+  });
+}
+function bBox(title,id,legend,note){
+  return `<div class="chartbox"><h4>${title}</h4><svg id="${id}"></svg>
+    <div class="lgd">${legend||''}</div>${note?`<div class="sub" style="font-size:10.5px;color:var(--muted);margin-top:5px">${note}</div>`:''}</div>`;
+}
+function bLg(col,txt){ return `<span><span style="color:${col}">■</span> ${txt}</span>`; }
+
+function bessRender(){
+  const R=BR, out=$('bessOut'); if(!R){out.innerHTML='';return;}
+  const isUPS=R.n.type==='UPS';
+  const pct=v=>v==null?null:(v*100).toFixed(1)+' %';
+
+  /* ---- readiness ledger ---- */
+  const cap=[
+    ['Energy throughput & round-trip efficiency', R.hasP?'ok':'no', 'battery power (or V + I)'],
+    ['Cycle count (equivalent full cycles)',      (R.efcEnergy!=null||R.efcSoc!=null)?'ok':'no','power + rated energy, or SoC'],
+    ['SoC band / depth-of-discharge usage',        R.socArr.length?'ok':'no','SoC'],
+    ['Cell voltage imbalance',                     R.dv.length?'ok':'no','cell V max + cell V min'],
+    ['Thermal spread & hot-spot flags',            R.dT.length||R.tmxArr.length?'ok':'no','cell temp max (+ min for ΔT)'],
+    ['Internal resistance trend',                  R.rPts.length?'ok':'no','string voltage + current'],
+    ['Capacity-fade proxy',                        R.capPts.length?'ok':'no','power + SoC, with deep (≥20 %) discharges'],
+    ['Voltage-drift model (ridge + EWMA/CUSUM)',   R.drift?'ok':'no','string voltage + at least one of I / SoC / T']
+  ];
+  const ledger=`<div class="sec"><h3>What could and could not be computed</h3>
+    <div class="scroll" style="max-height:none"><table>
+    <tr><th>Capability</th><th>Status</th><th>Needs</th></tr>
+    ${cap.map(c=>`<tr><td>${c[0]}</td><td class="${c[1]==='ok'?'ok':'bad'}">${c[1]==='ok'?'✓ computed':'✕ not computed'}</td><td class="muted">${c[2]}</td></tr>`).join('')}
+    </table></div>
+    ${R.notes.length?`<div class="caveat" style="margin:10px 0 0">${R.notes.map(x=>'• '+x).join('<br>')}</div>`:''}</div>`;
+
+  /* ---- KPI cards ---- */
+  const rteLbl=R.meas==='ac'?'AC round-trip efficiency':'DC round-trip efficiency';
+  let rteCls=''; if(R.rteRaw!=null) rteCls = R.rteRaw<0.80?'badk':R.rteRaw<0.88?'warnk':'';
+  const driftWarn = Math.abs(R.socDrift??0)>3;
+  const k=[];
+  k.push(bKpi('Discharged energy', R.hasP? fmt(R.Edis)+' kWh':null,
+    R.hasP?`over ${fmt(R.spanH)} h of record`:'map battery power, or V and I'));
+  k.push(bKpi('Charged energy', R.hasP? fmt(R.Echg)+' kWh':null, R.hasP?'rectangular integration of the logged power':''));
+  k.push(bKpi(rteLbl, R.rteRaw!=null? pct(R.rteRaw):null,
+    R.rteRaw==null?'needs charge and discharge in the same file':
+    (R.socDrift!=null? `SoC drift over the window: ${R.socDrift>0?'+':''}${fmt(R.socDrift)} %`+
+      (R.rteAdj!=null? ` · drift-corrected: <b>${pct(R.rteAdj)}</b>`:' · give rated kWh for a drift-corrected figure')
+      : 'map SoC to check whether start and end SoC match'), rteCls));
+  k.push(bKpi('Equivalent full cycles', R.efcEnergy!=null? fmt(R.efcEnergy):null,
+    R.efcEnergy!=null? 'Σ|P|·dt ÷ (2 × rated kWh)'+(R.efcSoc!=null?` · SoC-swing count gives ${fmt(R.efcSoc)}`:'')
+      : (R.efcSoc!=null? `SoC-swing method only: <b>${fmt(R.efcSoc)}</b> — enter rated kWh for the energy method`:'needs rated kWh + power, or SoC')));
+  k.push(bKpi('SoC range used', R.socArr.length? fmt(Math.min(...R.socArr))+' – '+fmt(Math.max(...R.socArr))+' %':null,
+    R.socArr.length? `mean ${fmt(bMean(R.socArr))} % · ${R.swings.length} half-cycle swing(s) detected`:'map SoC'));
+  k.push(bKpi('Peak power seen', R.hasP? fmt(R.pAbsMax)+' kW':null,
+    R.hasP? (R.pRated? 'peak C-rate ≈ '+fmt(R.pAbsMax/R.pRated)+' × rated power':'enter rated kW to get the C-rate'):''));
+  const dvP95=R.dv.length?bPct(R.dv,0.95):null;
+  k.push(bKpi('Cell ΔV — p95', dvP95!=null? fmt(dvP95)+' mV':null,
+    dvP95!=null? `max ${fmt(Math.max(...R.dv))} mV`+(R.dvLim?
+        ` · ${(R.dv.filter(d=>d>R.dvLim).length/R.dv.length*100).toFixed(1)} % of samples above your ${R.dvLim} mV limit`
+        :' · no ΔV limit entered, so nothing was flagged')
+      :'map cell V max and cell V min',
+    dvP95!=null&&R.dvLim&&dvP95>R.dvLim?'badk':''));
+  k.push(bKpi('Hottest cell', R.tmxArr.length? fmt(Math.max(...R.tmxArr))+' °C':null,
+    R.tmxArr.length? `mean ${fmt(bMean(R.tmxArr))} °C`+(R.dT.length?` · max module ΔT ${fmt(Math.max(...R.dT))} °C`:''):'map cell temp max',
+    R.tmxArr.length&&R.tHi&&Math.max(...R.tmxArr)>R.tHi?'badk':''));
+  const rRej=[R.rDropSoc?R.rDropSoc+' rejected (SoC moved &gt;1.5 %)':'',R.rDropNeg?R.rDropNeg+' rejected (negative R)':'']
+    .filter(Boolean).join(', ');
+  k.push(bKpi('Internal resistance (median)', R.rMed!=null? fmt(R.rMed)+' mΩ':null,
+    R.rMed!=null? `${R.rPts.length} usable step(s) of ${R.rSteps} current steps &gt; ${fmt(R.iThr)} A`+
+      (rRej? ' · '+rRej:'')+
+      (R.rFit? ` · trend ${R.rFit.m>0?'+':''}${fmt(R.rFit.m*30)} mΩ/month (R²=${R.rFit.r2.toFixed(2)}${R.rFit.r2<0.3?' — too scattered to call a trend':''})`
+             :' · too few points for a trend')
+      : (R.rSteps? `${R.rSteps} current steps found but none were usable`+(rRej?' — '+rRej:'')+'. No resistance figure is reported rather than a contaminated one.'
+                 : 'map string voltage and current'),
+    R.rFit&&R.rFit.m>0&&R.rFit.r2>0.3?'warnk':''));
+  k.push(bKpi('Capacity proxy', R.capPts.length? fmt(bMean(R.capPts.map(p=>p.cap)))+' kWh':null,
+    R.capPts.length? `from ${R.capPts.length} deep discharge(s)`+
+      (R.capFit? ` · trend ${R.capFit.m>0?'+':''}${fmt(R.capFit.m*30)} kWh/month (R²=${R.capFit.r2.toFixed(2)})`:' · need ≥4 for a trend')+
+      (R.eRated? ` · ${(bMean(R.capPts.map(p=>p.cap))/R.eRated*100).toFixed(1)} % of nameplate`:'')
+      :'needs power + SoC with at least one ≥20 % discharge'));
+  k.push(bKpi('Data coverage', fmt(R.covered*100)+' %',
+    `${R.rows.length} rows · median interval ${fmt(R.medDt*60)} min · ${R.gaps} gap(s) totalling ${fmt(R.gapH)} h`,
+    R.covered<0.9?'warnk':''));
+  k.push(bKpi('Aux / HVAC energy', R.Eaux>0? fmt(R.Eaux)+' kWh':null,
+    R.Eaux>0? (R.Edis>0? (R.Eaux/R.Edis*100).toFixed(1)+' % of discharged energy':''):'map the aux / HVAC power column'));
+
+  /* ---- charts ---- */
+  const charts=[];
+  charts.push(bBox('Power and state of charge','bc1',
+    bLg('#ff9a2e','power kW (left, + = discharge)')+bLg('#2dd4bf','SoC % (right)'),
+    R.pDerived?'Power here is V×I/1000, derived because no power column was mapped.':''));
+  if(R.dvSeries.length) charts.push(bBox('Cell voltage imbalance','bc2',
+    bLg('#5aa9ff','ΔV mV')+bLg('#ff5c5c','your limit line'),
+    'Rising ΔV that does not settle after a balancing window usually points at a weak cell or a balancing circuit that is not keeping up — confirm against the BMS cell-level view before acting.'));
+  if(R.dTSeries.length||R.tmxArr.length) charts.push(bBox('Temperatures','bc3',
+    bLg('#ff9a2e','max cell °C')+bLg('#5aa9ff','min cell °C')+bLg('#8a97a6','ambient °C'),''));
+  if(R.rPts.length) charts.push(bBox('Internal resistance from current steps','bc4',
+    bLg('#2dd4bf','R estimate mΩ')+bLg('#ff9a2e','least-squares trend'),
+    'Opportunistic estimate: R = −ΔV/ΔI across consecutive SCADA samples, keeping only steps where SoC barely moved (so the open-circuit voltage is roughly constant). At typical logging intervals this still captures ohmic <i>plus</i> polarisation resistance, so treat it as a relative trend indicator, not as a substitute for a proper DC pulse or EIS test.'));
+  if(R.capPts.length) charts.push(bBox('Capacity proxy per deep discharge','bc5',
+    bLg('#2dd4bf','kWh per full SoC span')+bLg('#ff9a2e','trend'),
+    'Energy delivered during a discharge swing divided by the SoC used, scaled to 100 %. This inherits whatever error the BMS SoC estimate has, so it tracks <i>BMS-reported</i> capacity, not an independently measured one.'));
+  if(R.drift) charts.push(bBox('Voltage-drift control chart (EWMA)','bc6',
+    bLg('#5aa9ff','EWMA of residual')+bLg('#ff5c5c','±3σ control limits'),
+    `A ridge model of terminal voltage against ${R.drift.featKeys.map(f=>({i_:'current',soc:'SoC',tmx:'temperature'})[f]).join(', ')} was fitted on the first ${R.drift.nRef} rows (reference period, R²=${R.drift.refR2.toFixed(3)}), then applied to the whole record. The chart shows how far actual voltage has drifted from that learned behaviour. A sustained excursion means the pack is no longer responding the way it did in the reference window.`));
+
+  /* ---- UPS block ---- */
+  let upsHtml='';
+  if(isUPS&&R.ups){
+    const u=R.ups;
+    upsHtml=`<div class="sec"><h3>UPS-specific</h3><div class="kpis">
+      ${bKpi('Float voltage', u.floatV? fmt(u.floatV.mean)+' V':null,
+        u.floatV? `${u.floatV.n} near-zero-current samples · range ${fmt(u.floatV.min)} – ${fmt(u.floatV.max)} V. Compare against the charger set-point on the OEM datasheet (it is temperature-compensated).`
+        :'needs string voltage and current')}
+      ${bKpi('Discharge events', u.events.length? String(u.events.length):null,
+        u.events.length? `≥2 min above ${fmt(u.disThr)} kW · longest ${fmt(Math.max(...u.events.map(e=>(e.t1-e.t0)/60000)))} min · deepest ${fmt(Math.max(...u.events.map(e=>e.e)))} kWh delivered`
+        :'no discharge lasting ≥2 min was found in this record — the bank has not been proven under load here')}
+      ${bKpi('Autonomy estimate', u.autonomy!=null? fmt(u.autonomy)+' min':null,
+        u.autonomy!=null? `at ${fmt(u.load)} kW, based on the ${u.autoBasis}`
+        :'enter the UPS load (kW) above; an autonomy figure also needs either a real discharge event or the rated kWh')}
+    </div>
+    <div class="caveat" style="margin-top:10px">An autonomy figure derived from logged data is a <b>estimate under the conditions that were logged</b>. It does not replace a witnessed discharge test at full design load, which is what actually proves the bank.</div></div>`;
+  }
+
+  /* ---- event ledger ---- */
+  const show=R.ev.slice(0,300);
+  const counts={}; R.ev.forEach(e=>counts[e.type]=(counts[e.type]||0)+1);
+  const evHtml=`<div class="sec"><h3>Flagged events</h3>
+    ${R.ev.length? `<div class="row" style="margin-bottom:8px">${Object.entries(counts).map(([t,c])=>`<span class="pill">${esc(t)}: <b>${c}</b></span>`).join('')}</div>
+    <div class="scroll"><table><tr><th style="width:150px">When</th><th style="width:130px">Type</th><th>Detail</th></tr>
+    ${show.map(e=>`<tr><td class="mono">${bTime(e.t)}</td><td class="${e.cls}">${esc(e.type)}</td><td>${e.txt}</td></tr>`).join('')}
+    </table></div>${R.ev.length>300?`<div class="hint">Showing the first 300 of ${R.ev.length} events.</div>`:''}`
+    : '<span class="muted small">No sample breached the limits you set. Note that this only checks the limits entered above — it is not a statement that the battery is healthy.</span>'}</div>`;
+
+  out.innerHTML=`${ledger}
+    <div class="sec"><h3>Key indicators · ${esc(R.n.label)} (${esc(R.n.type)})</h3><div class="kpis">${k.join('')}</div></div>
+    <div class="sec"><h3>Trends</h3>${charts.join('')}</div>
+    ${upsHtml}
+    ${evHtml}
+    <div class="caveat" style="margin-top:16px">These indicators are descriptive statistics and simple learned baselines over the data you supplied. They are useful for spotting change over time and for prioritising a site visit — they are not a certified state-of-health measurement, and none of them should be used on their own to accept, reject or warranty-claim a battery.</div>`;
+
+  /* draw after DOM exists */
+  bChart('bc1',[
+    {pts:R.rows.filter(r=>r.p!=null).map(r=>[r.t,r.p]),col:'#ff9a2e',axis:1},
+    {pts:R.rows.filter(r=>r.soc!=null).map(r=>[r.t,r.soc]),col:'#2dd4bf',axis:2}
+  ],{right:true});
+  if(R.dvSeries.length) bChart('bc2',[{pts:R.dvSeries,col:'#5aa9ff'}],{hl:R.dvLim?[{y:R.dvLim}]:[]});
+  if(R.dTSeries.length||R.tmxArr.length) bChart('bc3',[
+    {pts:R.rows.filter(r=>r.tmx!=null).map(r=>[r.t,r.tmx]),col:'#ff9a2e'},
+    {pts:R.rows.filter(r=>r.tmn!=null).map(r=>[r.t,r.tmn]),col:'#5aa9ff'},
+    {pts:R.rows.filter(r=>r.tam!=null).map(r=>[r.t,r.tam]),col:'#8a97a6',dash:'3 3'}
+  ],{hl:R.tHi?[{y:R.tHi}]:[]});
+  if(R.rPts.length){
+    const s=[{pts:R.rPts.map(p=>[p.t,p.R]),col:'#2dd4bf',dots:true}];
+    if(R.rFit){const t0=R.rPts[0].t,t1=R.rPts.at(-1).t;
+      s.push({pts:[[t0,R.rFit.m*t0/86400000+R.rFit.c],[t1,R.rFit.m*t1/86400000+R.rFit.c]],col:'#ff9a2e',w:1.6});}
+    bChart('bc4',s,{});
+  }
+  if(R.capPts.length){
+    const s=[{pts:R.capPts.map(p=>[p.t,p.cap]),col:'#2dd4bf',dots:true}];
+    if(R.capFit){const t0=R.capPts[0].t,t1=R.capPts.at(-1).t;
+      s.push({pts:[[t0,R.capFit.m*t0/86400000+R.capFit.c],[t1,R.capFit.m*t1/86400000+R.capFit.c]],col:'#ff9a2e',w:1.6});}
+    bChart('bc5',s,{});
+  }
+  if(R.drift) bChart('bc6',[{pts:R.drift.ew,col:'#5aa9ff'}],
+    {hl:[{y:R.drift.ucl},{y:R.drift.lcl}]});
+}
+
+/* ---- push KPIs back onto the component so they show in tab 2 and save with the config ---- */
+function bessWriteParams(){
+  if(!BR){alert('Run “Analyse battery” first.');return;}
+  const R=BR,p=R.n.params;
+  const set=(k,v)=>{ if(v!=null&&v!=='') p[k]=v; };
+  set('BESS · discharged energy (kWh)', R.hasP? fmt(R.Edis):null);
+  set('BESS · charged energy (kWh)',    R.hasP? fmt(R.Echg):null);
+  set('BESS · round-trip efficiency (%)', R.rteRaw!=null? (R.rteRaw*100).toFixed(1):null);
+  set('BESS · equivalent full cycles',  R.efcEnergy!=null? fmt(R.efcEnergy): (R.efcSoc!=null?fmt(R.efcSoc):null));
+  set('BESS · cell ΔV p95 (mV)',        R.dv.length? fmt(bPct(R.dv,0.95)):null);
+  set('BESS · max cell temp (°C)',      R.tmxArr.length? fmt(Math.max(...R.tmxArr)):null);
+  set('BESS · internal resistance median (mΩ)', R.rMed!=null? fmt(R.rMed):null);
+  set('BESS · capacity proxy (kWh)',    R.capPts.length? fmt(bMean(R.capPts.map(x=>x.cap))):null);
+  set('BESS · analysis window (h)',     fmt(R.spanH));
+  refreshSelectors();
+  alert('KPIs written into the parameters of "'+R.n.label+'". They are visible in tab 2 and will be included when you save the config.');
+}
+
+/* =========================================================================
+   ADVANCED RAG — retrieval-augmented analysis over the whole digital twin,
+   plus any extra reference files, fully offline (no external libraries).
+   ========================================================================= */
+let ragDocs=[];    // extra uploaded reference files: {id,name,rows?,headers?,text?}
+let ragIndex=[];   // retrieval corpus: {source,text}
+let ragUid2=1;
+
+function ragHandleFiles(input){
+  const files=[...input.files]; if(!files.length)return;
+  $('ragUploadMsg').textContent='reading '+files.length+' file(s)…';
+  let pending=files.length, failed=[];
+  const finish=()=>{ if(pending>0)return;
+    $('ragUploadMsg').innerHTML = failed.length
+      ? '<span class="bad">✕ '+failed.map(esc).join('; ')+'</span>'
+      : '<span class="ok">✓ added</span>';
+    renderRagDocList();
+  };
+  files.forEach(f=>{
+    const ext=f.name.toLowerCase().split('.').pop();
+    const done=doc=>{ ragDocs.push(doc); pending--; finish(); };
+    const fail=e=>{ failed.push(f.name+': '+e.message); pending--; finish(); };
+    if(ext==='csv'){
+      const rd=new FileReader();
+      rd.onload=()=>{ try{ const t=parseCSV(rd.result); done({id:'rd'+(ragUid2++),name:f.name,headers:t.headers,rows:t.rows}); }catch(e){fail(e);} };
+      rd.onerror=()=>fail(new Error('read error'));
+      rd.readAsText(f);
+    } else if(ext==='xlsx'){
+      const rd=new FileReader();
+      rd.onload=async()=>{ try{ const t=await parseXLSX(rd.result); done({id:'rd'+(ragUid2++),name:f.name,headers:t.headers,rows:t.rows}); }catch(e){fail(e);} };
+      rd.onerror=()=>fail(new Error('read error'));
+      rd.readAsArrayBuffer(f);
+    } else if(ext==='json'||ext==='txt'||ext==='md'){
+      const rd=new FileReader();
+      rd.onload=()=>{ done({id:'rd'+(ragUid2++),name:f.name,text:rd.result}); };
+      rd.onerror=()=>fail(new Error('read error'));
+      rd.readAsText(f);
+    } else { fail(new Error('unsupported type .'+ext)); }
+  });
+  input.value='';
+}
+function renderRagDocList(){
+  const box=$('ragDocList'); if(!box)return;
+  if(!ragDocs.length){ box.innerHTML='<span class="muted small">No reference files uploaded yet.</span>'; return; }
+  box.innerHTML=ragDocs.map(d=>`<span class="pill">${esc(d.name)}
+    <span class="muted">(${d.rows?d.rows.length+' rows':((d.text||'').length+' chars')})</span>
+    <a href="javascript:void 0" onclick="ragRemoveDoc('${d.id}')" style="margin-left:6px;color:var(--red)">✕</a></span>`).join(' ');
+}
+function ragRemoveDoc(id){ ragDocs=ragDocs.filter(d=>d.id!==id); renderRagDocList(); }
+
+/* ---- corpus: chunk the whole app state + uploaded reference files ---- */
+function ragBuildCorpus(){
+  const chunks=[];
+  const push=(source,text)=>{ if(text&&String(text).trim()) chunks.push({source,text:String(text).trim()}); };
+  const colStats=(headers,rows,cap)=>{
+    const numCols=(headers||[]).filter((h,j)=>{
+      let ok=0; rows.forEach(r=>{ if(String(r[j]).trim()!==''&&isFinite(Number(r[j]))) ok++; });
+      return ok>2;
+    });
+    let txt='';
+    numCols.slice(0,cap||8).forEach(h=>{
+      const j=headers.indexOf(h);
+      const vals=rows.map(r=>Number(r[j])).filter(isFinite);
+      if(!vals.length)return;
+      const mn=Math.min(...vals),mx=Math.max(...vals),mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+      txt+=` ${h}: min=${fmt(mn)} max=${fmt(mx)} mean=${fmt(mean)};`;
+    });
+    return txt||' none numeric.';
+  };
+
+  state.nodes.forEach(n=>{
+    const pr=Object.entries(n.params||{}).map(([k,v])=>`${k}=${v}`).join(', ');
+    push('Component: '+n.label, `Component "${n.label}" (type: ${n.type}).`+(pr?` Parameters: ${pr}.`:' No parameters set.'));
+
+    ensureDatasets(n);
+    (n.datasets||[]).forEach(d=>{
+      push('Dataset: '+n.label+' / '+(d.label||d.file),
+        `Dataset "${d.label||d.file}" attached to component "${n.label}" `+
+        (d.season?`(season/tag: ${d.season}). `:'. ')+
+        `${d.rows.length} rows, ${(d.headers||[]).length} columns: ${(d.headers||[]).join(', ')}. `+
+        `Column stats —${colStats(d.headers,d.rows)}`+
+        (n.data&&n.data.id===d.id?' [currently the active dataset for this component]':''));
+    });
+
+    if(n.model){
+      const m=n.model;
+      push('Trained model: '+n.label,
+        `Component "${n.label}" has a trained ${m.type==='nn'?'deep neural network':m.type==='mlp'?'1-hidden-layer network':'ridge/linear'} model `+
+        `predicting "${m.target}" from [${m.feats.join(', ')}]. R²=${m.metrics.r2.toFixed(3)}, RMSE=${fmt(m.metrics.rmse)}, MAE=${fmt(m.metrics.mae)}, `+
+        `trained on ${m.nTrain} rows / validated on ${m.nVal} rows${m.dropped?`, ${m.dropped} rows dropped`:''}.`);
+    }
+    if(n.lastPred){
+      push('Last prediction: '+n.label, `Component "${n.label}" last plant-scenario prediction: ${n.lastPred.target} = ${fmt(n.lastPred.value)}.`);
+    }
+  });
+
+  try{ if(typeof CL!=='undefined'&&CL.getKG){ const kg=CL.getKG(); if(kg) push('Cleaning analysis results', kg); } }catch(e){}
+
+  ragDocs.forEach(d=>{
+    if(d.rows){
+      push('Uploaded file: '+d.name,
+        `Reference file "${d.name}" — ${d.rows.length} rows, columns: ${(d.headers||[]).join(', ')}. Column stats —${colStats(d.headers,d.rows,10)}`);
+      const sample=d.rows.slice(0,50);
+      for(let i=0;i<sample.length;i+=10){
+        const grp=sample.slice(i,i+10);
+        const txt=grp.map(r=>d.headers.map((h,j)=>`${h}=${r[j]}`).join(', ')).join(' | ');
+        push(`Uploaded file rows: ${d.name} [${i+1}-${i+grp.length}]`, txt);
+      }
+    } else if(d.text){
+      const paras=d.text.split(/\n\s*\n/).filter(p=>p.trim());
+      let buf='';
+      paras.forEach(p=>{
+        if((buf+p).length>800){ if(buf)push('Uploaded file: '+d.name,buf); buf=p; }
+        else buf+=(buf?'\n\n':'')+p;
+      });
+      if(buf)push('Uploaded file: '+d.name,buf);
+    }
+  });
+  return chunks;
+}
+function ragRebuildIndex(){
+  ragIndex=ragBuildCorpus();
+  $('ragIndexMsg').innerHTML='<span class="ok">✓ '+ragIndex.length+' chunk(s) indexed</span>';
+  $('ragIndexSummary').innerHTML = ragIndex.length
+    ? `<div class="metric"><span>Total chunks</span><b>${ragIndex.length}</b></div>`+
+      `<div class="metric"><span>Components</span><b>${state.nodes.length}</b></div>`+
+      `<div class="metric"><span>Datasets attached</span><b>${state.nodes.reduce((s,n)=>s+((n.datasets||[]).length),0)}</b></div>`+
+      `<div class="metric"><span>Trained models</span><b>${state.nodes.filter(n=>n.model).length}</b></div>`+
+      `<div class="metric"><span>Uploaded reference files</span><b>${ragDocs.length}</b></div>`+
+      `<div class="small muted" style="margin-top:6px">Re-run this after new uploads or training, so the index stays current.</div>`
+    : '<span class="warn">Nothing to index yet — add components/data or upload a reference file.</span>';
+  renderRagQpills();
+}
+function renderRagQpills(){
+  const box=$('ragQpills'); if(!box)return;
+  const qs=['Summarize what data is available for this plant.',
+    'Which trained model has the weakest R²?',
+    'List the datasets attached to each component.',
+    'Any data-quality issues I should know about?'];
+  box.innerHTML=qs.map(q=>`<button class="qp" onclick="ragSetQ(this)">${esc(q)}</button>`).join('');
+}
+function ragSetQ(el){ $('ragInput').value=el.textContent; }
+
+/* ---- retrieval: offline keyword/overlap scoring (no network, no API key) ---- */
+const RAG_STOP=new Set(['the','a','an','is','are','of','to','in','on','for','and','or','what','which','how',
+  'was','were','with','it','this','that','do','does','my','me','please','tell','about','you','your']);
+function ragTokenize(s){ return String(s).toLowerCase().match(/[a-z0-9%²·.]+/g)||[]; }
+function ragScoreChunk(qTokens,chunk){
+  const cTokens=ragTokenize(chunk.text+' '+chunk.source);
+  let score=0;
+  qTokens.forEach(qt=>{
+    cTokens.forEach(ct=>{ if(ct===qt)score+=2; else if(ct.length>2&&(ct.includes(qt)||qt.includes(ct)))score+=0.4; });
+  });
+  return score;
+}
+function ragRetrieve(query,k){
+  const qTokens=[...new Set(ragTokenize(query).filter(t=>t.length>1&&!RAG_STOP.has(t)))];
+  if(!qTokens.length)return[];
+  const scored=ragIndex.map(c=>({c,s:ragScoreChunk(qTokens,c)})).filter(x=>x.s>0);
+  scored.sort((a,b)=>b.s-a.s);
+  return scored.slice(0,k).map(x=>x.c);
+}
+function ragAsk(){
+  const inp=$('ragInput'); const q=inp.value.trim(); if(!q)return;
+  inp.value=''; ragAddMsg('u',q);
+  if(!ragIndex.length) ragRebuildIndex();
+  const top=ragRetrieve(q,8);
+  if(!top.length){
+    ragAddMsg('a','No indexed data matches that question. Try "Build / refresh knowledge index", upload relevant data/reference files, or rephrase the question.');
+    return;
+  }
+  ragAddMsg('a', ragSynthesize(q,top));
+}
+function ragSynthesize(query,chunks){
+  const body=chunks.map(c=>`• [${c.source}] ${c.text}`).join('\n');
+  return 'Based on '+chunks.length+' retrieved item(s) from your plant data:\n\n'+body+
+    '\n\n(Retrieval-based answer — every line above is pulled verbatim from your indexed data, nothing is invented. '+
+    'Re-run "Build / refresh knowledge index" after uploading or training more.)';
+}
+function ragAddMsg(role,text){
+  const box=$('ragChatbox'); box.querySelector('.muted')?.closest('div')?.remove();
+  const div=document.createElement('div'); div.className='cmsg '+role;
+  div.innerHTML=`<div><div class="role">${role==='u'?'YOU':'RAG ANALYST'}</div>`+
+    `<div class="txt">${String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>`;
+  box.appendChild(div); box.scrollTop=box.scrollHeight;
+}
+function ragClearChat(){ $('ragChatbox').innerHTML='<div class="small muted" style="text-align:center;margin-top:40px">Ask a question grounded in your uploaded data…</div>'; }
+
+/* =========================================================================
+   INIT (with a tiny starter plant so the canvas isn't empty)
+   ========================================================================= */
+initPalette();
+// starter plant: full power flow  PV → Inverter → LT → Transformer → HT → Grid,
+// with the auxiliary transformer tapped off the LT bus (station supply).
+addNode('PV Module','PV Field',30,50);        // 0
+addNode('Inverter','INV-1',190,50);           // 1
+addNode('LT','LT Panel',350,50);              // 2
+addNode('Transformer','Main Tx',510,50);      // 3 (step-up LT→HT)
+addNode('HT','HT Panel',670,50);              // 4
+addNode('Grid','Grid POI',670,190);           // 5
+addNode('Aux. Transformer','Aux Tx',350,190); // 6 (station auxiliary supply)
+addNode('PCS','PCS-1',190,300);               // 7 (battery power conversion system)
+addNode('BESS','BESS Bank',30,300);           // 8 (utility-scale storage)
+addNode('UPS','Control-room UPS',350,300);    // 9 (station UPS battery bank)
+const L=(a,b)=>state.wires.push({id:'w'+(uid++),from:state.nodes[a].id,to:state.nodes[b].id});
+L(0,1); L(1,2); L(2,3); L(3,4); L(4,5); L(2,6);
+L(8,7); L(7,2); L(6,9);   // BESS → PCS → LT bus ;  Aux Tx → UPS
+renderDiagram();refreshSelectors();renderNodeList();
+renderRagDocList();renderRagQpills();
+</script>
+<script>
+"use strict";
+/* =========================================================================
+   CLEANING ANALYSIS MODULE (namespaced as CL — self-contained, only reads
+   the global $ helper already defined by the main app)
+   ========================================================================= */
+const CL = (function(){
+
+  const PALETTE = ['#ff9a2e','#2dd4bf','#5aa9ff','#4ade80','#ff5c5c','#c084fc','#f472b6','#facc15'];
+  let raw = { gen:null, clean:null };   // parsed-but-not-yet-combined uploads
+  let D   = null;                       // computed analysis bundle, once "Run analysis" is clicked
+
+  /* ---------------- date helpers ---------------- */
+  function isoDate(v){
+    if(v==null || v==='') return null;
+    if(v instanceof Date) return isNaN(v) ? null : v.toISOString().slice(0,10);
+    const s = String(v).trim();
+    let d = new Date(s);
+    if(!isNaN(d)) return d.toISOString().slice(0,10);
+    // try dd-mm-yyyy / dd/mm/yyyy fallback
+    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(m){
+      let [_,a,b,y] = m;
+      if(y.length===2) y = '20'+y;
+      d = new Date(`${y}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`);
+      if(!isNaN(d)) return d.toISOString().slice(0,10);
+    }
+    return null;
+  }
+
+  /* ---------------- CSV parsing ---------------- */
+  function parseCSVFile(file, cb, errCb){
+    if(!file){ return; }
+    Papa.parse(file, {
+      header:true, dynamicTyping:true, skipEmptyLines:true,
+      complete: res => {
+        if(!res.data || !res.data.length){ errCb('File appears to be empty.'); return; }
+        cb(res.data, res.meta.fields||Object.keys(res.data[0]));
+      },
+      error: e => errCb(e.message)
+    });
+  }
+
+  function parseGen(rows, fields){
+    const lower = fields.map(f=>String(f).toLowerCase().trim());
+    const dateIdx = lower.findIndex(f=>f.includes('date'));
+    if(dateIdx<0) throw new Error('No column with "date" in its header was found.');
+    const dateField = fields[dateIdx];
+    const invIdx = lower.findIndex(f=>/inverter|asset|unit|device|component|string|block/.test(f));
+    const valIdx = lower.findIndex(f=>/gen|kwh|energy|output|value|production|yield/.test(f));
+
+    const byInv = {}; const dateSet = new Set();
+    if(invIdx>=0 && valIdx>=0 && fields.length<=4 && invIdx!==dateIdx && valIdx!==dateIdx){
+      // long format: Date, Inverter, Generation
+      const invField = fields[invIdx], valField = fields[valIdx];
+      rows.forEach(r=>{
+        const d = isoDate(r[dateField]); if(!d) return;
+        const inv = String(r[invField]||'').trim(); if(!inv) return;
+        const v = Number(r[valField]); if(!isFinite(v)) return;
+        dateSet.add(d);
+        (byInv[inv] = byInv[inv]||{})[d]=v;
+      });
+    } else {
+      // wide format: Date, Inv_1, Inv_2, ...
+      const invFields = fields.filter(f=>f!==dateField);
+      if(!invFields.length) throw new Error('No inverter columns found alongside the date column.');
+      rows.forEach(r=>{
+        const d = isoDate(r[dateField]); if(!d) return;
+        dateSet.add(d);
+        invFields.forEach(fN=>{
+          const v = Number(r[fN]);
+          if(!isFinite(v)) return;
+          (byInv[fN] = byInv[fN]||{})[d]=v;
+        });
+      });
+    }
+    const invs = Object.keys(byInv);
+    if(!invs.length) throw new Error('Could not find any usable numeric generation columns.');
+    const dates = Array.from(dateSet).sort();
+    const series = {};
+    invs.forEach(inv=> series[inv] = dates.map(d => (byInv[inv][d]!==undefined ? byInv[inv][d] : null)));
+    return { dates, invs, series };
+  }
+
+  function parseClean(rows, fields, allInvs){
+    const lower = fields.map(f=>String(f).toLowerCase().trim());
+    const dateIdx = lower.findIndex(f=>f.includes('date'));
+    if(dateIdx<0) throw new Error('No column with "date" in its header was found.');
+    const dateField = fields[dateIdx];
+    const invIdx = lower.findIndex(f=>/inverter|asset|unit|device|component/.test(f));
+    const typeIdx = lower.findIndex(f=>/type|method/.test(f));
+    const invField = invIdx>=0 ? fields[invIdx] : null;
+    const typeField = typeIdx>=0 ? fields[typeIdx] : null;
+
+    const evByInv = {}; allInvs.forEach(i=>evByInv[i]=[]);
+    let matched=0, total=0;
+    rows.forEach(r=>{
+      const d = isoDate(r[dateField]); if(!d) return;
+      total++;
+      const type = typeField ? (String(r[typeField]||'wet').trim()||'wet') : 'wet';
+      const invRaw = invField ? String(r[invField]||'').trim() : '';
+      if(!invRaw || invRaw.toUpperCase()==='ALL'){
+        allInvs.forEach(inv=>evByInv[inv].push({date:d, type})); matched++;
+      } else {
+        let match = allInvs.find(inv=>inv.toLowerCase()===invRaw.toLowerCase());
+        if(!match) match = allInvs.find(inv=> inv.toLowerCase().includes(invRaw.toLowerCase()) || invRaw.toLowerCase().includes(inv.toLowerCase()));
+        if(match){ evByInv[match].push({date:d, type}); matched++; }
+      }
+    });
+    Object.keys(evByInv).forEach(inv=>evByInv[inv].sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)));
+    return { evByInv, matched, total };
+  }
+
+  /* ---------------- file handlers ---------------- */
+  function loadGenFile(input){
+    const f = input.files[0]; if(!f) return;
+    parseCSVFile(f, (rows,fields)=>{
+      try{
+        raw.gen = parseGen(rows, fields);
+        $('clGenMsg').innerHTML = `<span class="ok">✓ ${raw.gen.dates.length} days · ${raw.gen.invs.length} inverter(s): ${raw.gen.invs.join(', ')}</span>`;
+      } catch(e){
+        raw.gen = null;
+        $('clGenMsg').innerHTML = `<span class="bad">✗ ${e.message}</span>`;
+      }
+      updateRunBtn();
+    }, msg=>{ $('clGenMsg').innerHTML = `<span class="bad">✗ ${msg}</span>`; });
+  }
+
+  function loadCleanFile(input){
+    const f = input.files[0]; if(!f) return;
+    if(!raw.gen){ $('clCleanMsg').innerHTML = `<span class="bad">✗ Load the generation file first so inverter names are known.</span>`; input.value=''; return; }
+    parseCSVFile(f, (rows,fields)=>{
+      try{
+        const res = parseClean(rows, fields, raw.gen.invs);
+        raw.clean = res.evByInv;
+        const n = Object.values(res.evByInv).reduce((s,a)=>s+a.length,0);
+        $('clCleanMsg').innerHTML = `<span class="ok">✓ ${n} cleaning record(s) matched (${res.matched}/${res.total} rows)</span>`;
+      } catch(e){
+        raw.clean = null;
+        $('clCleanMsg').innerHTML = `<span class="bad">✗ ${e.message}</span>`;
+      }
+      updateRunBtn();
+    }, msg=>{ $('clCleanMsg').innerHTML = `<span class="bad">✗ ${msg}</span>`; });
+  }
+
+  function updateRunBtn(){
+    $('clRunBtn').disabled = !(raw.gen && raw.clean);
+  }
+
+  /* ---------------- sample data (for trying the tool) ---------------- */
+  function loadSample(){
+    const dates=[]; const start=new Date('2026-01-01');
+    for(let i=0;i<100;i++){ const d=new Date(start); d.setDate(d.getDate()+i); dates.push(d.toISOString().slice(0,10)); }
+    const invs=['Inv_1','Inv_2','Inv_3'];
+    const series={};
+    invs.forEach((inv,ii)=>{
+      const arr=[]; let soil=0;
+      for(let i=0;i<dates.length;i++){
+        const seasonal = 1800 + 200*Math.sin(i/18) + (ii*15);
+        const noise = (Math.random()-0.5)*120;
+        soil += 0.35 + Math.random()*0.25;
+        const val = Math.max(400, seasonal - soil*6 + noise);
+        arr.push(+val.toFixed(1));
+        if((i-3-ii*7)%23===0 && i>5) soil=Math.random()*2; // periodic cleaning resets soiling
+      }
+      series[inv]=arr;
+    });
+    raw.gen = { dates, invs, series };
+    const evByInv = {}; invs.forEach((inv,ii)=>{
+      evByInv[inv]=[];
+      for(let i=8+ii*7;i<dates.length;i+=23) evByInv[inv].push({date:dates[i], type: Math.random()<0.5?'wet':'robot'});
+    });
+    raw.clean = evByInv;
+    $('clGenMsg').innerHTML = `<span class="ok">✓ Sample data loaded: ${dates.length} days · ${invs.join(', ')}</span>`;
+    $('clCleanMsg').innerHTML = `<span class="ok">✓ Sample cleaning log loaded</span>`;
+    updateRunBtn();
+    analyze();
+  }
+
+  /* ---------------- core computation ---------------- */
+  function compute(){
+    const { dates, invs, series } = raw.gen;
+    const n = dates.length;
+    const fleetMean = dates.map((_,i)=>{
+      let s=0,c=0; invs.forEach(inv=>{ const v=series[inv][i]; if(v!=null){ s+=v; c++; } });
+      return c ? s/c : null;
+    });
+    const norm = {};
+    invs.forEach(inv=> norm[inv] = series[inv].map((v,i)=> (v!=null && fleetMean[i]) ? v/fleetMean[i] : null));
+
+    const rollPeak={}, dailyLoss={};
+    invs.forEach(inv=>{
+      rollPeak[inv]=[]; dailyLoss[inv]=[];
+      for(let i=0;i<n;i++){
+        const start=Math.max(0,i-44); let mx=null;
+        for(let j=start;j<=i;j++){ const v=norm[inv][j]; if(v!=null && (mx==null||v>mx)) mx=v; }
+        rollPeak[inv][i]=mx;
+        const v=norm[inv][i];
+        dailyLoss[inv][i]=(mx!=null && v!=null) ? Math.max(0,(mx-v)/mx*100) : null;
+      }
+    });
+
+    const W = Math.max(3, Math.min(30, +($('clWindow').value)||10));
+    const dateIdx = {}; dates.forEach((d,i)=>dateIdx[d]=i);
+    const results = {}; const summary = [];
+    invs.forEach(inv=>{
+      const evs = (raw.clean[inv]||[]).filter(e=>dateIdx[e.date]!=null);
+      let prevGain=[];
+      const enriched = evs.map((e,k)=>{
+        const i = dateIdx[e.date];
+        const prevEvIdx = k>0 ? dateIdx[evs[k-1].date] : -1;
+        const nextEvIdx = k<evs.length-1 ? dateIdx[evs[k+1].date] : n;
+        const preStart = Math.max(0, i-W, prevEvIdx+1);
+        const postEnd = Math.min(n-1, i+W, nextEvIdx-1);
+        const avg = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : null;
+        const before = series[inv].slice(preStart,i).filter(v=>v!=null);
+        const after  = series[inv].slice(i,postEnd+1).filter(v=>v!=null);
+        const beforeN = norm[inv].slice(preStart,i).filter(v=>v!=null);
+        const afterN  = norm[inv].slice(i,postEnd+1).filter(v=>v!=null);
+        const avg_before=avg(before), avg_after=avg(after);
+        const avg_before_norm=avg(beforeN), avg_after_norm=avg(afterN);
+        const pct_actual = (avg_before && avg_after) ? (avg_after-avg_before)/avg_before*100 : null;
+        const pct_normal = (avg_before_norm && avg_after_norm) ? (avg_after_norm-avg_before_norm)/avg_before_norm*100 : null;
+        const soiling_rate_pct = i>0 ? dailyLoss[inv][i-1] : null;
+        const gapStart = k>0 ? dateIdx[evs[k-1].date] : 0;
+        let lost=0;
+        for(let j=gapStart;j<i;j++){
+          const pk=rollPeak[inv][j], v=norm[inv][j], fm=fleetMean[j];
+          if(pk!=null && v!=null && fm!=null){ const diff=(pk-v)/pk; if(diff>0) lost += diff*fm; }
+        }
+        const hist_avg_gain = prevGain.length ? prevGain.reduce((s,v)=>s+v,0)/prevGain.length : null;
+        let status='unknown';
+        if(pct_normal!=null) status = pct_normal<0 ? 'wrong' : (pct_normal<2 ? 'suboptimal' : 'optimal');
+        if(pct_normal!=null) prevGain.push(pct_normal);
+        const wdates = dates.slice(preStart,postEnd+1);
+        const rec = {
+          inv, date:e.date, type:e.type,
+          avg_before, avg_after, pct_actual,
+          avg_before_norm, avg_after_norm, pct_normal,
+          soiling_rate_pct, lost_gen_kwh: lost, hist_avg_gain, status,
+          window: {
+            dates: wdates,
+            delta: wdates.map((_,idx)=> preStart+idx-i),
+            actual: series[inv].slice(preStart,postEnd+1),
+            fleet: fleetMean.slice(preStart,postEnd+1),
+            norm: norm[inv].slice(preStart,postEnd+1)
+          }
+        };
+        summary.push(rec);
+        return rec;
+      });
+      results[inv]=enriched;
+    });
+
+    // EDA stats
+    const eda = {};
+    invs.forEach(inv=>{
+      const vals = series[inv].filter(v=>v!=null);
+      const m = vals.reduce((s,v)=>s+v,0)/(vals.length||1);
+      const sd = Math.sqrt(vals.reduce((s,v)=>s+(v-m)*(v-m),0)/(vals.length||1));
+      const sorted = [...vals].sort((a,b)=>a-b);
+      const median = sorted.length ? sorted[Math.floor(sorted.length/2)] : 0;
+      const q1 = sorted[Math.floor(sorted.length*0.25)]||0, q3 = sorted[Math.floor(sorted.length*0.75)]||0;
+      const iqr = q3-q1;
+      const outliers = vals.filter(v=> v<q1-1.5*iqr || v>q3+1.5*iqr).length;
+      // correlation vs fleet mean
+      let sxy=0,sx=0,sy=0,sxx=0,syy=0,cnt=0;
+      for(let i=0;i<n;i++){
+        const x=series[inv][i], y=fleetMean[i];
+        if(x!=null && y!=null){ cnt++; sx+=x; sy+=y; sxy+=x*y; sxx+=x*x; syy+=y*y; }
+      }
+      let corr=0;
+      if(cnt>1){
+        const num = cnt*sxy - sx*sy;
+        const den = Math.sqrt((cnt*sxx-sx*sx)*(cnt*syy-sy*sy));
+        corr = den ? num/den : 0;
+      }
+      eda[inv] = { mean:+m.toFixed(1), std:+sd.toFixed(1), min:+(sorted[0]||0).toFixed(1),
+        max:+(sorted[sorted.length-1]||0).toFixed(1), median:+median.toFixed(1),
+        cv_pct: m ? +(sd/m*100).toFixed(1) : 0, corr:+corr.toFixed(3), outliers };
+    });
+
+    D = { dates, invs, series, fleetMean, norm, rollPeak, dailyLoss, results, summary, eda, W };
+  }
+
+  function gc(inv){ return PALETTE[D.invs.indexOf(inv)%PALETTE.length]; }
+  function fmt(v,d=1){ return (v==null || !isFinite(v)) ? '—' : (+v).toFixed(d); }
+  function pctSpan(v){
+    if(v==null) return '—';
+    const cls = v>=0 ? 'ok' : 'bad';
+    return `<span class="${cls}">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
+  }
+  function statusBadge(s){
+    const label = {wrong:'WRONG TIMING', suboptimal:'SUB-OPTIMAL', optimal:'OPTIMAL', unknown:'—'}[s]||s;
+    return `<span class="badge-status ${s}">${label}</span>`;
+  }
+  const L = extra => Object.assign({
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    font:{color:'#e6edf3', size:11}, margin:{t:34,b:40,l:50,r:16},
+    legend:{orientation:'h', y:-0.18}
+  }, extra);
+  const CFG = { displayModeBar:false, responsive:true };
+
+  /* ---------------- top-level run ---------------- */
+  function analyze(){
+    $('clRunMsg').innerHTML = '';
+    try{
+      if(!raw.gen || !raw.clean) throw new Error('Load both files first.');
+      compute();
+    } catch(e){
+      $('clRunMsg').innerHTML = `<span class="bad">✗ ${e.message}</span>`;
+      return;
+    }
+    $('clResults').style.display='block';
+    renderOverview();
+    initBA();
+    initSoil();
+    initTS();
+    initLog();
+    initEDA();
+    initAI();
+    goSub('overview');
+    $('clRunMsg').innerHTML = `<span class="ok">✓ Analyzed ${D.summary.length} cleaning event(s) across ${D.invs.length} inverter(s).</span>`;
+  }
+
+  function goSub(name){
+    document.querySelectorAll('.ctab').forEach(b=>b.classList.toggle('active', b.dataset.cv===name));
+    document.querySelectorAll('.cview').forEach(v=>v.classList.toggle('active', v.id==='cv-'+name));
+  }
+
+  /* ---------------- OVERVIEW ---------------- */
+  function renderOverview(){
+    const agg = D.invs.map(inv=>{
+      const evs = D.results[inv];
+      const avg = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : 0;
+      return {
+        inv,
+        avgB: avg(evs.map(e=>e.avg_before).filter(v=>v!=null)),
+        avgA: avg(evs.map(e=>e.avg_after).filter(v=>v!=null)),
+        pA: avg(evs.map(e=>e.pct_actual).filter(v=>v!=null)),
+        pN: avg(evs.map(e=>e.pct_normal).filter(v=>v!=null)),
+      };
+    });
+    Plotly.newPlot('cl-ov-bar',[
+      {name:'Avg Before', x:agg.map(r=>r.inv), y:agg.map(r=>r.avgB), type:'bar', marker:{color:'#5aa9ff'}},
+      {name:'Avg After',  x:agg.map(r=>r.inv), y:agg.map(r=>r.avgA), type:'bar', marker:{color:'#4ade80'}},
+    ], L({title:{text:'Avg generation before/after (kWh)',font:{size:12}}, barmode:'group'}), CFG);
+
+    Plotly.newPlot('cl-ov-act',[{
+      x:agg.map(r=>r.inv), y:agg.map(r=>r.pA), type:'bar',
+      marker:{color:agg.map(r=>r.pA>=0?'#4ade80':'#ff5c5c')},
+      text:agg.map(r=>(r.pA>=0?'+':'')+r.pA.toFixed(1)+'%'), textposition:'outside',
+    }], L({yaxis:{title:'%'}, showlegend:false, margin:{t:16,b:40,l:44,r:10}}), CFG);
+
+    Plotly.newPlot('cl-ov-nor',[{
+      x:agg.map(r=>r.inv), y:agg.map(r=>r.pN), type:'bar',
+      marker:{color:agg.map(r=>r.pN>=2?'#ff9a2e':(r.pN>=0?'#4ade80':'#ff5c5c'))},
+      text:agg.map(r=>(r.pN>=0?'+':'')+r.pN.toFixed(1)+'%'), textposition:'outside',
+    }], L({yaxis:{title:'%'}, showlegend:false, margin:{t:16,b:40,l:44,r:10}}), CFG);
+
+    const rows = D.summary.map(s=>`<tr>
+      <td style="color:${gc(s.inv)};font-weight:700">${s.inv}</td>
+      <td>${s.date}</td><td>${s.type}</td>
+      <td>${fmt(s.avg_before)}</td><td>${fmt(s.avg_after)}</td>
+      <td>${pctSpan(s.pct_actual)}</td><td>${pctSpan(s.pct_normal)}</td>
+      <td>${fmt(s.soiling_rate_pct)}%</td>
+      <td>${fmt(s.lost_gen_kwh,0)}</td>
+      <td>${statusBadge(s.status)}</td>
+    </tr>`).join('');
+    $('cl-tb-ov').innerHTML = `<tr><th>Inv</th><th>Date</th><th>Type</th><th>Before</th><th>After</th>
+      <th>%Actual</th><th>%Normalized</th><th>Soiling%</th><th>Lost kWh</th><th>Status</th></tr>${rows}`;
+  }
+
+  /* ---------------- BEFORE / AFTER ---------------- */
+  let baInv=null, baEv=0;
+  function initBA(){
+    baInv = D.invs[0];
+    $('cl-ba-invs').innerHTML = D.invs.map(inv=>
+      `<button class="invbtn${inv===baInv?' on':''}" onclick="CL.selBAInv('${inv}')">${inv}</button>`).join('');
+    popBAEvs(); renderBA();
+  }
+  function selBAInv(inv){
+    baInv=inv; baEv=0;
+    document.querySelectorAll('#cl-ba-invs .invbtn').forEach(b=>b.classList.toggle('on', b.textContent===inv));
+    popBAEvs(); renderBA();
+  }
+  function popBAEvs(){
+    const evs = D.results[baInv];
+    $('cl-ba-ev').innerHTML = evs.map((e,i)=>
+      `<option value="${i}">Ev${i+1}: ${e.date} (${e.type}) ${e.pct_normal!=null?(e.pct_normal>=0?'+':'')+e.pct_normal.toFixed(1)+'%':''}</option>`).join('')
+      || '<option>No events</option>';
+    $('cl-ba-ev').value = baEv;
+  }
+  function renderBA(){
+    const evs = D.results[baInv];
+    if(!evs || !evs.length){ $('cl-ba-cards').innerHTML='<div class="small muted">No cleaning events for this inverter.</div>'; Plotly.purge('cl-ba-main'); Plotly.purge('cl-ba-all'); return; }
+    baEv = +$('cl-ba-ev').value || 0;
+    const e = evs[baEv];
+    const gain = (e.avg_before!=null && e.avg_after!=null) ? (e.avg_after-e.avg_before) : null;
+    const kpis = [
+      ['Cleaning date', e.date+' ('+e.type+')', 'var(--amber2)'],
+      ['Avg before', fmt(e.avg_before)+' kWh', 'var(--blue)'],
+      ['Avg after', fmt(e.avg_after)+' kWh', 'var(--green)'],
+      ['Actual gain', gain!=null ? (gain>=0?'+':'')+gain.toFixed(1)+' kWh' : '—', 'var(--amber2)'],
+      ['% Actual', e.pct_actual!=null?(e.pct_actual>=0?'+':'')+e.pct_actual.toFixed(1)+'%':'—', e.pct_actual>=0?'var(--green)':'var(--red)'],
+      ['% Normalized', e.pct_normal!=null?(e.pct_normal>=0?'+':'')+e.pct_normal.toFixed(1)+'%':'—', 'var(--teal)'],
+      ['Soiling before', fmt(e.soiling_rate_pct)+'%', 'var(--amber2)'],
+      ['Status', {wrong:'WRONG TIMING',suboptimal:'SUB-OPTIMAL',optimal:'OPTIMAL',unknown:'—'}[e.status], e.status==='wrong'?'var(--red)':(e.status==='suboptimal'?'var(--amber2)':'var(--green)')],
+    ];
+    $('cl-ba-cards').innerHTML = kpis.map(k=>`<div class="kpi"><div class="lbl">${k[0]}</div><div class="val" style="color:${k[2]}">${k[1]}</div></div>`).join('');
+
+    const w = e.window;
+    Plotly.newPlot('cl-ba-main',[
+      {x:w.delta, y:w.actual, name:baInv+' actual', type:'scatter', mode:'lines+markers', line:{color:gc(baInv)}},
+      {x:w.delta, y:w.fleet, name:'Fleet mean', type:'scatter', mode:'lines', line:{color:'#8a97a6', dash:'dot'}},
+    ], L({title:{text:'Day offset from cleaning (0 = clean day)',font:{size:12}},
+          xaxis:{title:'Day offset', zeroline:true},
+          yaxis:{title:'kWh'},
+          shapes:[{type:'line', x0:0,x1:0,y0:0,y1:1,yref:'paper', line:{color:'#ff9a2e', dash:'dash'}}]}), CFG);
+
+    Plotly.newPlot('cl-ba-all',[{
+      x: evs.map(ev=>ev.date), y: evs.map(ev=>ev.pct_normal),
+      type:'bar', marker:{color:evs.map(ev=> ev.pct_normal==null?'#8a97a6':(ev.pct_normal<0?'#ff5c5c':(ev.pct_normal<2?'#ff9a2e':'#4ade80')))},
+    }], L({yaxis:{title:'% normalized gain'}, showlegend:false}), CFG);
+  }
+
+  /* ---------------- SOILING LOSS ---------------- */
+  function initSoil(){
+    $('cl-sl-inv').innerHTML = D.invs.map(inv=>`<option>${inv}</option>`).join('');
+    renderSoil();
+  }
+  function renderSoil(){
+    const inv = $('cl-sl-inv').value || D.invs[0];
+    Plotly.newPlot('cl-sl-daily',[
+      {x:D.dates, y:D.dailyLoss[inv], type:'scatter', mode:'lines', fill:'tozeroy',
+       line:{color:gc(inv)}, name:'Soiling loss %'}
+    ], L({title:{text:inv+' — daily soiling loss %',font:{size:12}}, xaxis:{type:'category', tickvals:D.dates.filter((_,i)=>i%14===0), tickangle:-45}, yaxis:{title:'%'}, showlegend:false}), CFG);
+
+    const evs = D.results[inv];
+    Plotly.newPlot('cl-sl-events',[{
+      x: evs.map(e=>e.date), y: evs.map(e=>e.soiling_rate_pct),
+      type:'bar', marker:{color:gc(inv)}
+    }], L({yaxis:{title:'% loss right before clean'}, showlegend:false}), CFG);
+  }
+
+  /* ---------------- TIME SERIES ---------------- */
+  function initTS(){
+    $('cl-ts-inv').innerHTML = D.invs.map(inv=>`<option>${inv}</option>`).join('');
+    renderTS();
+    Plotly.newPlot('cl-ts-fleet', D.invs.map(inv=>({
+      x:D.dates, y:D.series[inv], type:'scatter', mode:'lines', name:inv, line:{color:gc(inv), width:1.4}
+    })), L({title:{text:'Fleet — all inverters',font:{size:12}}, xaxis:{type:'category', tickvals:D.dates.filter((_,i)=>i%14===0), tickangle:-45}, yaxis:{title:'kWh'}}), CFG);
+  }
+  function renderTS(){
+    const inv = $('cl-ts-inv').value || D.invs[0];
+    const evDates = new Set((D.results[inv]||[]).map(e=>e.date));
+    const markX=[], markY=[];
+    D.dates.forEach((d,i)=>{ if(evDates.has(d)){ markX.push(d); markY.push(D.series[inv][i]); } });
+    Plotly.newPlot('cl-ts',[
+      {x:D.dates, y:D.series[inv], type:'scatter', mode:'lines', name:inv, line:{color:gc(inv), width:1.6}},
+      {x:markX, y:markY, type:'scatter', mode:'markers', name:'Cleaning day', marker:{symbol:'star', size:12, color:'#ff9a2e'}}
+    ], L({title:{text:inv,font:{size:12}}, xaxis:{type:'category', tickvals:D.dates.filter((_,i)=>i%14===0), tickangle:-45}, yaxis:{title:'kWh'}}), CFG);
+  }
+
+  /* ---------------- CLEANING LOG ---------------- */
+  function initLog(){
+    const rows = D.invs.map(inv=>{
+      const evs = D.results[inv];
+      const badges = evs.map(e=>`<span class="badge-status ${e.status}" style="margin:2px">
+        ${e.date} (${e.type}) ${e.pct_normal!=null?(e.pct_normal>=0?'+':'')+e.pct_normal.toFixed(1)+'%':''}</span>`).join('');
+      return `<tr><td style="color:${gc(inv)};font-weight:700">${inv}</td><td>${badges||'<span class="muted">No events</span>'}</td>
+        <td style="text-align:center">${evs.length}</td>
+        <td>${evs.length? evs[evs.length-1].date : '—'}</td></tr>`;
+    }).join('');
+    $('cl-tb-log').innerHTML = `<tr><th>Inverter</th><th>All events</th><th>Count</th><th>Latest</th></tr>${rows}`;
+  }
+
+  /* ---------------- EDA ---------------- */
+  function initEDA(){
+    const rows = D.invs.map(inv=>{
+      const e = D.eda[inv];
+      return `<tr><td style="color:${gc(inv)};font-weight:700">${inv}</td>
+        <td>${e.mean}</td><td>${e.std}</td><td>${e.min}</td><td>${e.max}</td><td>${e.median}</td>
+        <td>${e.cv_pct}%</td><td style="color:${e.corr>0.7?'#4ade80':'#facc15'}">${e.corr}</td><td>${e.outliers}</td></tr>`;
+    }).join('');
+    $('cl-tb-eda').innerHTML = `<tr><th>Inv</th><th>Mean kWh</th><th>Std Dev</th><th>Min</th><th>Max</th>
+      <th>Median</th><th>CV%</th><th>Corr vs Fleet</th><th>Outliers</th></tr>${rows}`;
+
+    Plotly.newPlot('cl-eda-mean',[{
+      x:D.invs, y:D.invs.map(inv=>D.eda[inv].mean), type:'bar', marker:{color:D.invs.map(gc)}
+    }], L({showlegend:false, margin:{t:16,b:40,l:44,r:10}}), CFG);
+    Plotly.newPlot('cl-eda-corr',[{
+      x:D.invs, y:D.invs.map(inv=>D.eda[inv].corr), type:'bar',
+      marker:{color:D.invs.map(inv=>D.eda[inv].corr>0.7?'#4ade80':'#facc15')}
+    }], L({yaxis:{range:[0,1]}, showlegend:false, margin:{t:16,b:40,l:44,r:10}}), CFG);
+  }
+
+  /* ---------------- AI ANALYST ---------------- */
+  function buildKG(){
+    const lines = [`Fleet: ${D.invs.join(', ')}. Data range: ${D.dates[0]} to ${D.dates[D.dates.length-1]}.`];
+    D.summary.forEach(s=>{
+      lines.push(`${s.inv} | ${s.date} (${s.type}) | before=${fmt(s.avg_before)}kWh after=${fmt(s.avg_after)}kWh `+
+        `%actual=${s.pct_actual!=null?s.pct_actual.toFixed(1):'NA'} %normalized=${s.pct_normal!=null?s.pct_normal.toFixed(1):'NA'} `+
+        `soiling_before=${fmt(s.soiling_rate_pct)}% lost_kwh=${fmt(s.lost_gen_kwh,0)} status=${s.status}`);
+    });
+    D.invs.forEach(inv=>{
+      const e=D.eda[inv];
+      lines.push(`${inv} stats: mean=${e.mean} std=${e.std} min=${e.min} max=${e.max} cv=${e.cv_pct}% corr_vs_fleet=${e.corr} outliers=${e.outliers}`);
+    });
+    return lines.join('\n');
+  }
+  const QSUGG = [
+    "Which events had a negative normalized gain?",
+    "Which inverter has the highest average soiling rate?",
+    "How much total generation was lost due to soiling before cleaning?",
+    "Which inverter's cleaning schedule is most sub-optimal?",
+  ];
+  function initAI(){
+    $('cl-qpills').innerHTML = QSUGG.map(q=>`<button class="qp" onclick="CL.setQ(this)">${q}</button>`).join('');
+  }
+  function setQ(el){ $('cl-cinput').value = el.textContent; }
+  async function doChat(){
+    const inp = $('cl-cinput'); const q = inp.value.trim(); if(!q) return;
+    inp.value=''; addMsg('u', q);
+    const btn = $('cl-cbtn'); btn.textContent='…'; btn.disabled=true;
+    try{
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          messages:[{role:'user', content:
+            `You are a solar O&M analyst. Use ONLY the data below (computed client-side from the user's uploaded CSVs). Be precise, cite numbers, and note that "%normalized" is a fleet-relative proxy, not a true weather-adjusted PVsyst figure.\n\n${buildKG()}\n\nQuestion: ${q}`}]
+        })
+      });
+      const data = await res.json();
+      const ans = (data.content||[]).map(b=>b.text||'').join('') || 'No response.';
+      addMsg('a', ans);
+    } catch(e){ addMsg('a','Error: '+e.message); }
+    btn.textContent='Ask'; btn.disabled=false;
+  }
+  function addMsg(role, text){
+    const box=$('cl-chatbox'); box.querySelector('.muted')?.closest('div')?.remove();
+    const div=document.createElement('div');
+    div.className='cmsg '+role;
+    div.innerHTML = `<div><div class="role">${role==='u'?'YOU':'AI ANALYST'}</div>
+      <div class="txt">${String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>`;
+    box.appendChild(div); box.scrollTop = box.scrollHeight;
+  }
+  function clrChat(){ $('cl-chatbox').innerHTML='<div class="small muted" style="text-align:center;margin-top:40px">Ask a question about your cleaning data…</div>'; }
+
+  return { loadGenFile, loadCleanFile, loadSample, analyze, goSub,
+    selBAInv, renderBA, renderSoil, renderTS, setQ, doChat, clrChat,
+    getKG: ()=> D ? buildKG() : null };   // exposed so tab 8 (Advanced RAG) can index this analysis too
+})();
+</script>
+
+</body>
+</html>
